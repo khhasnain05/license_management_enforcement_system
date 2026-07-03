@@ -1,0 +1,3334 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>DLMS — Applicant Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+/* ── TIMELINE PROGRESS ── */
+.progress-steps{display:flex;align-items:flex-start;gap:0;margin-bottom:28px;overflow-x:auto;padding-bottom:8px;}
+.ps-item{display:flex;flex-direction:column;align-items:center;flex:1;min-width:90px;position:relative;}
+.ps-item:not(:last-child)::after{
+  content:'';position:absolute;top:16px;left:50%;right:-50%;height:2px;
+  background:var(--border);z-index:0;
+}
+.ps-item.done:not(:last-child)::after{background:var(--teal);}
+.ps-dot{
+  width:32px;height:32px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.75rem;font-weight:700;z-index:1;flex-shrink:0;
+  transition:all .3s;
+}
+.ps-dot.done{background:var(--teal);color:var(--navy);}
+.ps-dot.active{background:var(--teal-glass);color:var(--teal);border:2px solid var(--teal);animation:pulse 2s infinite;}
+.ps-dot.pending{background:var(--navy-3);color:var(--muted);border:1px solid var(--border);}
+.ps-label{font-size:.65rem;font-weight:600;color:var(--muted);text-align:center;margin-top:6px;line-height:1.3;max-width:80px;}
+.ps-item.done .ps-label{color:var(--teal);}
+.ps-item.active .ps-label{color:var(--off-white);}
+
+/* ── UPLOAD ITEMS ── */
+.doc-list{display:flex;flex-direction:column;gap:10px;}
+.doc-item{
+  display:flex;align-items:center;gap:12px;
+  padding:12px 14px;
+  background:rgba(255,255,255,.03);
+  border:1px solid var(--border);border-radius:var(--r);
+  transition:all .2s;
+}
+.doc-item:hover{border-color:rgba(255,255,255,.12);}
+.doc-icon{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;}
+.doc-info{flex:1;}
+.doc-info .doc-name{font-size:.82rem;font-weight:600;color:var(--off-white);}
+.doc-info .doc-status{font-size:.72rem;color:var(--muted);margin-top:1px;}
+.doc-action{flex-shrink:0;}
+
+/* ── TEST SCHEDULE ── */
+.test-card{
+  background:rgba(255,255,255,.03);border:1px solid var(--border);
+  border-radius:var(--r);padding:16px;margin-bottom:10px;
+  transition:all .2s;cursor:pointer;
+}
+.test-card:hover{border-color:rgba(0,212,170,.2);background:rgba(0,212,170,.03);}
+.test-card .test-type{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--teal);margin-bottom:5px;}
+.test-card .test-date{font-size:.9rem;font-weight:600;color:var(--white);}
+.test-card .test-center{font-size:.78rem;color:var(--muted);margin-top:3px;}
+.test-card .test-actions{display:flex;gap:8px;margin-top:12px;}
+
+/* ── PAYMENT ── */
+.payment-item{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 0;border-bottom:1px solid var(--border);
+}
+.payment-item:last-child{border-bottom:none;}
+.pay-info .pay-title{font-size:.85rem;font-weight:600;color:var(--off-white);}
+.pay-info .pay-date{font-size:.72rem;color:var(--muted);margin-top:2px;font-family:var(--mono);}
+.pay-amount{font-size:.95rem;font-weight:700;font-family:var(--mono);}
+.pay-amount.pending{color:var(--amber);}
+.pay-amount.paid{color:var(--green);}
+
+/* ── ACTIVITY ── */
+.activity-item{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04);}
+.activity-item:last-child{border-bottom:none;}
+.act-dot{width:8px;height:8px;border-radius:50%;background:var(--teal);margin-top:5px;flex-shrink:0;}
+.act-text{font-size:.8rem;color:var(--muted);line-height:1.5;}
+.act-text strong{color:var(--off-white);font-weight:500;}
+.act-time{font-size:.7rem;color:var(--muted);margin-top:2px;font-family:var(--mono);}
+
+/* ── LICENSE CARD ── */
+.license-visual{
+  background:linear-gradient(135deg,var(--navy-4),var(--navy-3));
+  border:1px solid var(--border-2);border-radius:16px;padding:22px;
+  position:relative;overflow:hidden;
+}
+
+@keyframes hologramSweep {
+  0% { transform: translateX(-150%) skewX(-45deg); }
+  100% { transform: translateX(250%) skewX(-45deg); }
+}
+.punjab-license {
+    background: url('https://www.transparenttextures.com/patterns/cubes.png'), linear-gradient(135deg, #f0fdf4, #dcfce7);
+    color: #1e293b; border-radius: 14px; border: 1px solid #10b981; position: relative; overflow: hidden;
+    box-shadow: 0 15px 35px rgba(16, 185, 129, 0.15); width: 100%; max-width: 480px; margin: 0 auto 20px auto;
+}
+.punjab-license::after {
+    content: ''; position: absolute; top: 0; left: 0; width: 150%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
+    animation: hologramSweep 4s infinite linear; pointer-events: none; z-index: 10;
+}
+.license-visual::before{
+  content:'PUNJAB DLMS';position:absolute;right:-10px;top:12px;
+  font-size:.6rem;font-weight:700;letter-spacing:.15em;color:rgba(0,212,170,.1);
+  transform:rotate(90deg);transform-origin:right center;white-space:nowrap;
+}
+.lv-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;}
+.lv-flag{font-size:.65rem;font-weight:700;color:var(--gold);letter-spacing:.08em;text-transform:uppercase;}
+.lv-chip{width:32px;height:24px;background:linear-gradient(135deg,var(--gold-dim),var(--gold));border-radius:5px;opacity:.8;}
+.lv-name{font-size:1.1rem;font-weight:700;color:var(--white);margin-bottom:4px;}
+.lv-cnic{font-size:.75rem;color:var(--teal);font-family:var(--mono);letter-spacing:.06em;}
+.lv-meta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;}
+.lv-field .lv-lbl{font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;}
+.lv-field .lv-val{font-size:.8rem;font-weight:600;color:var(--off-white);margin-top:2px;font-family:var(--mono);}
+
+/* ── LEARNER APPLY BANNER ── */
+.learner-banner{
+  background:linear-gradient(135deg,rgba(0,212,170,.08),rgba(30,45,86,.6));
+  border:1.5px solid rgba(0,212,170,.25);
+  border-radius:var(--radius-lg);
+  padding:28px;
+  text-align:center;
+  margin-bottom:20px;
+  animation:fadeIn .4s ease;
+}
+.learner-banner .lb-icon{font-size:2.8rem;margin-bottom:12px;}
+.learner-banner h3{font-size:1.15rem;font-weight:700;color:var(--white);margin-bottom:8px;}
+.learner-banner p{font-size:.85rem;color:var(--muted);margin-bottom:20px;line-height:1.7;max-width:520px;margin-left:auto;margin-right:auto;}
+.learner-banner .lb-steps{
+  display:flex;justify-content:center;gap:12px;margin-bottom:22px;flex-wrap:wrap;
+}
+.learner-banner .lb-step{
+  display:flex;align-items:center;gap:7px;
+  background:rgba(255,255,255,.04);border:1px solid var(--border);
+  border-radius:8px;padding:7px 12px;font-size:.75rem;color:var(--muted);
+}
+.learner-banner .lb-step .s-num{
+  width:20px;height:20px;border-radius:50%;
+  background:var(--teal-glass);color:var(--teal);border:1px solid var(--border-2);
+  display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:700;flex-shrink:0;
+}
+
+/* ── LEARNER PERMIT CARD (issued) ── */
+.learner-permit-card{
+  background:linear-gradient(135deg,rgba(0,212,170,.06),rgba(22,32,64,.9));
+  border:1.5px solid rgba(0,212,170,.3);
+  border-radius:16px;padding:22px;position:relative;overflow:hidden;
+}
+.learner-permit-card::after{
+  content:'LEARNER PERMIT';position:absolute;right:-18px;top:18px;
+  font-size:.55rem;font-weight:700;letter-spacing:.18em;color:rgba(0,212,170,.15);
+  transform:rotate(90deg);transform-origin:right center;white-space:nowrap;
+}
+.lp-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  background:rgba(0,212,170,.12);border:1px solid rgba(0,212,170,.3);
+  border-radius:20px;padding:4px 12px;
+  font-size:.65rem;font-weight:700;color:var(--teal);
+  letter-spacing:.08em;text-transform:uppercase;margin-bottom:14px;
+}
+.lp-expiry-bar{margin-top:14px;}
+.lp-expiry-bar .eb-label{display:flex;justify-content:space-between;font-size:.68rem;color:var(--muted);margin-bottom:5px;}
+.lp-expiry-bar .eb-label span:last-child{color:var(--amber);}
+
+/* ── SPLIT WINDOW LAYOUT ── */
+.grid-main {
+    display: grid;
+    grid-template-columns: 2fr 1fr; /* Left side takes up 2/3, Right side takes 1/3 */
+    gap: 20px;
+    align-items: start; /* Prevents columns from stretching unevenly */
+}
+
+/* Stack them vertically on smaller screens (like phones/tablets) */
+@media (max-width: 992px) {
+    .grid-main {
+        grid-template-columns: 1fr; 
+    }
+}
+
+.section-locked{
+  opacity:.45;pointer-events:none;position:relative;
+}
+.lock-overlay{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  background:rgba(10,15,30,.15);border-radius:var(--radius-lg);z-index:10;
+  flex-direction:column;gap:6px;
+}
+.lock-overlay .lock-msg{
+  background:rgba(15,23,41,.9);border:1px solid var(--border);
+  border-radius:var(--r);padding:8px 16px;font-size:.78rem;color:var(--muted);
+  display:flex;align-items:center;gap:7px;
+}
+.nav-item.locked {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(1);
+}
+
+/* ── SUSPENDED LICENSE OVERLAY ── */
+@keyframes stampSlam {
+  0%   { transform: rotate(-30deg) scale(2.5); opacity: 0; }
+  55%  { transform: rotate(-30deg) scale(0.92); opacity: 1; }
+  70%  { transform: rotate(-30deg) scale(1.06); }
+  85%  { transform: rotate(-30deg) scale(0.97); }
+  100% { transform: rotate(-30deg) scale(1);    opacity: 1; }
+}
+@keyframes shakeCard {
+  0%,100% { transform: translateX(0); }
+  15%     { transform: translateX(-6px) rotate(-0.5deg); }
+  30%     { transform: translateX(6px)  rotate(0.5deg);  }
+  45%     { transform: translateX(-4px); }
+  60%     { transform: translateX(4px);  }
+  75%     { transform: translateX(-2px); }
+}
+.license-suspended-wrapper {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+  animation: shakeCard 0.55s ease 0.1s both;
+}
+.license-blur-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 5, 5, 0.45);
+  backdrop-filter: blur(3.5px);
+  -webkit-backdrop-filter: blur(3.5px);
+  border-radius: 12px;
+  z-index: 5;
+  pointer-events: none;
+}
+.license-suspended-stamp {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-30deg) scale(1);
+  z-index: 20;
+  pointer-events: none;
+  animation: stampSlam 0.55s cubic-bezier(0.22,1,0.36,1) 0.1s both;
+  user-select: none;
+}
+.license-suspended-stamp-inner {
+  border: 5px solid #ff1a1a;
+  border-radius: 8px;
+  padding: 10px 22px;
+  text-align: center;
+  background: rgba(20, 0, 0, 0.55);
+  box-shadow: 0 0 0 2px #ff1a1a, 0 0 22px rgba(255,26,26,0.55), inset 0 0 12px rgba(255,26,26,0.12);
+}
+.license-suspended-stamp-inner .stamp-text {
+  font-family: 'Impact', 'Arial Black', sans-serif;
+  font-size: 2rem;
+  font-weight: 900;
+  color: #ff1a1a;
+  letter-spacing: 0.15em;
+  text-shadow: 0 0 12px rgba(255,26,26,0.8), 2px 2px 0 #7a0000;
+  line-height: 1;
+  white-space: nowrap;
+}
+.license-suspended-stamp-inner .stamp-sub {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.6rem;
+  color: rgba(255,80,80,0.85);
+  letter-spacing: 0.2em;
+  margin-top: 3px;
+  text-transform: uppercase;
+}
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">🚗</div>
+      <div class="logo-text">
+        <strong>Punjab DLMS</strong>
+        <span>Applicant Portal</span>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Main</div>
+      <div class="nav-item active" id="nav-overview" onclick="showSection('overview',this)">
+        <span class="nav-icon">◈</span> Overview
+      </div>
+      <div class="nav-item" id="nav-application" onclick="showSection('application',this)">
+        <span class="nav-icon">📋</span> My Application
+      </div>
+      <div class="nav-item" id="nav-documents" onclick="showSection('documents',this)">
+        <span class="nav-icon">📁</span> Documents
+      </div>
+      <div class="nav-section-label">Tests & Payments</div>
+      <div class="nav-item" id="nav-tests" onclick="showSection('tests',this)">
+        <span class="nav-icon">🧪</span> Tests
+      </div>
+      <div class="nav-item" id="nav-payments" onclick="showSection('payments',this)">
+        <span class="nav-icon">💳</span> Payments
+      </div>
+      <div class="nav-section-label">Account</div>
+      <div class="nav-item" id="nav-notifications" onclick="showSection('notifications',document.getElementById('nav-notifications'))">
+        <span class="nav-icon">🔔</span> Notifications
+        <span class="nav-badge" id="notifCount">0</span>
+      </div>
+      <div class="nav-item" id="nav-profile" onclick="showSection('profile',this)">
+        <span class="nav-icon">👤</span> Profile
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-user" onclick="logout()">
+        <div class="avatar" id="sidebarAvatar">U</div>
+        <div class="sidebar-user-info">
+          <div class="name" id="sidebarName">Loading...</div>
+          <div class="role">Applicant</div>
+        </div>
+        <span style="color:var(--muted);font-size:.8rem;">⇥</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <div class="main-content">
+    <header class="topbar">
+      <div class="topbar-title" id="topbarTitle">Dashboard <span>Overview</span></div>
+      <div class="topbar-actions">
+        <div class="icon-btn" onclick="showSection('notifications',document.getElementById('nav-notifications'))">
+          🔔<span class="notif-dot" id="notifDot" style="display:none;"></span>
+        </div>
+        <div class="icon-btn" onclick="showSection('profile',document.getElementById('nav-profile'))">⚙</div>
+      </div>
+    </header>
+
+    <div class="page-content">
+
+      <!-- ════════════════ OVERVIEW ════════════════ -->
+      <section id="sec-overview" class="stagger">
+        <div id="actionHub" class="empty-state-container" style="text-align: center; padding: 40px 10px;">
+            <h2 style="margin-bottom: 30px; color: var(--white);">Welcome! What do you need to do today?</h2>
+            
+            <div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap;">
+                <!-- Option 1: New License -->
+                <div class="card" style="width: 280px; padding: 28px; text-align: center; cursor: pointer; transition: 0.2s;" onmouseover="this.style.borderColor='var(--teal)'" onmouseout="this.style.borderColor='var(--border)'" onclick="openModal('learnerModal')">
+                    <div style="font-size: 2.8rem; margin-bottom: 12px;">🪪</div>
+                    <h3 style="color: var(--white); margin-bottom: 8px;">New License</h3>
+                    <p style="color: var(--muted); font-size: 0.82rem; margin-bottom: 20px; line-height: 1.5;">Start your journey.</p>
+                    <button class="btn btn-primary" style="width: 100%;">Apply Now</button>
+                </div>
+
+                <!-- Option 2: Renew License -->
+                <div class="card" style="width: 280px; padding: 28px; text-align: center; cursor: pointer; transition: 0.2s;" onmouseover="this.style.borderColor='var(--teal)'" onmouseout="this.style.borderColor='var(--border)'" onclick="openModal('renewalModal')">
+                    <div style="font-size: 2.8rem; margin-bottom: 12px;">🔄</div>
+                    <h3 style="color: var(--white); margin-bottom: 8px;">Renew License</h3>
+                    <p style="color: var(--muted); font-size: 0.82rem; margin-bottom: 20px; line-height: 1.5;">Renew an expired license.</p>
+                    <button class="btn btn-outline" style="width: 100%;">Start Renewal</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── DASHBOARD WITH APPLICATION (shown once learner permit exists) ── -->
+        <div id="dashboardWithApp" style="display:none;">
+
+          <!-- Application progress steps -->
+          <div class="card fade-in" style="margin-bottom:20px;">
+            <div class="card-header">
+              <h3>Application Progress</h3>
+              <span class="badge" id="progressBadge">In Progress</span>
+            </div>
+            <div class="progress-steps" id="progressSteps"></div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div style="flex:1;"><div class="progress-bar"><div class="progress-fill teal" id="overallProgress" style="width:0%"></div></div></div>
+              <span style="font-size:.78rem;color:var(--teal);font-weight:600;white-space:nowrap;" id="progressPct">0% Complete</span>
+            </div>
+          </div>
+
+          <!-- Stats -->
+          <div class="stats-grid">
+            <div class="stat-card teal">
+              <div class="stat-icon teal">📋</div>
+              <div class="stat-info">
+                <div class="stat-value" id="statAppId">—</div>
+                <div class="stat-label">Application ID</div>
+              </div>
+            </div>
+            <div class="stat-card gold">
+              <div class="stat-icon gold">📅</div>
+              <div class="stat-info">
+                <div class="stat-value" id="statDaysLeft">—</div>
+                <div class="stat-label">Days in Learner Period</div>
+              </div>
+            </div>
+            <div class="stat-card green">
+              <div class="stat-icon green">✅</div>
+              <div class="stat-info">
+                <div class="stat-value" id="statTests">—</div>
+                <div class="stat-label">Tests Passed</div>
+              </div>
+            </div>
+            <div class="stat-card red">
+              <div class="stat-icon red">🔔</div>
+              <div class="stat-info">
+                <div class="stat-value" id="statNotifs">0</div>
+                <div class="stat-label">Unread Notifications</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid-main" style="margin-top:16px;">
+            
+            <div style="display:flex; flex-direction:column; gap:20px;">
+              
+              <div class="card">
+                <div class="card-header">
+                  <h3 id="licenseCardTitle">My License</h3>
+                  <span class="badge" id="licenseTypeBadge">—</span>
+                </div>
+                <div id="learnerPermitView" style="display:none;">
+                  <div class="learner-permit-card">
+                    <div class="lp-badge">🪪 Learner Permit</div>
+                    <div class="lv-meta" style="margin-bottom: 15px;">
+                      <div class="lv-field">
+                        <div class="lv-lbl">Applicant Name</div>
+                        <div class="lv-val" id="lp-name" style="font-size: 1.1rem; color: #fff;">—</div>
+                      </div>
+                      <div class="lv-field">
+                        <div class="lv-lbl">CNIC Number</div>
+                        <div class="lv-val" id="lp-cnic" style="font-size: 1.1rem; color: #fff;">—</div>
+                      </div>
+                    </div>
+                    <div class="lv-meta">
+                      <div class="lv-field">
+                        <div class="lv-lbl">Permit No.</div>
+                        <div class="lv-val" id="lp-num">—</div>
+                      </div>
+                      <div class="lv-field">
+                        <div class="lv-lbl">Category</div>
+                        <div class="lv-val" id="lp-cat">—</div>
+                      </div>
+                      <div class="lv-field">
+                        <div class="lv-lbl">Issue Date</div>
+                        <div class="lv-val" id="lp-issue">—</div>
+                      </div>
+                      <div class="lv-field">
+                        <div class="lv-lbl">Expiry Date</div>
+                        <div class="lv-val" id="lp-expiry">—</div>
+                      </div>
+                    </div>
+                    <div class="lp-expiry-bar">
+                      <div class="eb-label">
+                        <span>Learner Period Valid</span>
+                        <span id="lp-days-left">— days remaining</span>
+                      </div>
+                      <div class="progress-bar">
+                        <div class="progress-fill gold" id="lp-validity-bar" style="width:100%"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div id="pendingLicenseView" style="display:none;">
+                  <div style="text-align:center;padding:32px 20px;">
+                    <div style="font-size:2.4rem;margin-bottom:12px;" id="pendingStatusIcon">⏳</div>
+                    <div style="font-size:1.1rem;font-weight:700;color:var(--white);margin-bottom:6px;" id="pendingStatusTitle">Application Under Review</div>
+                    <div style="margin-top:14px;" id="pendingStatusLine">
+                      <p>Your application has been submitted. The licensing officer will review and approve your license soon.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card" id="penaltyPointsCard" style="display: none; border-left: 4px solid var(--teal);">
+                  <div class="card-header">
+                      <h3>🚦 Driving Record & Violations</h3>
+                  </div>
+                  
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; margin-bottom: 15px; padding: 15px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid var(--border);">
+                      <span style="font-weight: 600; color: var(--text-muted); font-size: 1.1rem;">Total Penalty Points:</span>
+                      <span id="appPenaltyPoints" style="font-family: var(--mono); font-size: 1.8rem; font-weight: bold; color: var(--teal);">0 / 30</span>
+                  </div>
+                  
+                  <div id="penaltyWarningBlock"></div>
+
+                  <div style="margin-top: 20px;">
+                      <h4 style="color: var(--white); margin-bottom: 10px; font-size: 0.95rem;">Violation History</h4>
+                      <div class="table-wrap" style="border:none; border-radius:8px; overflow-x:auto;">
+                          <table style="width: 100%; text-align: left; font-size: 0.85rem; min-width: 500px;">
+                              <thead style="background: var(--navy-3);">
+                                  <tr>
+                                      <th style="padding: 10px;">Challan No.</th>
+                                      <th style="padding: 10px;">Violation Type</th>
+                                      <th style="padding: 10px;">Points</th>
+                                      <th style="padding: 10px;">Fine</th>
+                                      <th style="padding: 10px;">Date</th>
+                                      <th style="padding: 10px;">Status</th>
+                                  </tr>
+                              </thead>
+                              <tbody id="applicantViolationsBody">
+                                  <tr><td colspan="6" style="text-align:center; padding:20px; color:var(--muted);">Loading records...</td></tr>
+                              </tbody>
+                          </table>
+                      </div>
+                  </div>
+              </div>
+
+            </div>
+            <!-- ── RIGHT COLUMN: Notifications + Activity ── -->
+            <div style="display:flex; flex-direction:column; gap:20px;">
+
+              <div class="card">
+                <div class="card-header">
+                  <h3>Notifications</h3>
+                  <span class="btn btn-ghost btn-sm" onclick="markAllRead()">Mark all read</span>
+                </div>
+                <div id="notifList"><p style="text-align:center;padding:20px;color:var(--muted);font-size:.82rem;">No notifications.</p></div>
+              </div>
+
+              <div class="card">
+                <div class="card-header"><h3>Recent Activity</h3></div>
+                <div id="activityFeed"><p style="text-align:center;padding:16px;color:var(--muted);font-size:.82rem;">No recent activity.</p></div>
+              </div>
+
+            </div>
+            <!-- ── END grid-main ── -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════════════ APPLICATION ════════════════ -->
+      <section id="sec-application" style="display:none;" class="stagger">
+        <div class="page-header"><h2>My Application</h2><p>Track your license application status and details</p></div>
+
+        <!-- No application yet -->
+        <div id="noAppMessage" style="display:none;">
+          <div class="card" style="text-align:center;padding:40px;">
+            <div style="font-size:2.5rem;margin-bottom:12px;">📋</div>
+            <h3 style="color:var(--white);margin-bottom:8px;">No Application Yet</h3>
+            <p style="margin-bottom:20px;">You have not applied for a learner permit yet. Start your journey by applying first.</p>
+            <button class="btn btn-primary btn-lg" onclick="openModal('learnerModal')">🪪 Apply for Learner Permit →</button>
+          </div>
+        </div>
+
+        <div id="appDetailsSection" style="display:none;">
+          <div class="grid-main">
+            <div style="display:flex;flex-direction:column;gap:16px;">
+              <div class="card">
+                <div class="card-header">
+                  <h3>Application Details</h3>
+                  <span class="badge badge-gold" id="appStatusBadge">—</span>
+                </div>
+                <div class="divider"></div>
+                <div class="grid-2" id="appDetails" style="gap:12px;"></div>
+              </div>
+
+              <div class="card">
+                <div class="card-header"><h3>Step-by-Step Timeline</h3></div>
+                <div class="timeline" id="appTimeline"></div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header"><h3>Current Stage</h3></div>
+              <div id="currentStagePanel" style="text-align:center;padding:30px 0;">
+                <div style="font-size:3rem;margin-bottom:12px;" id="stageIcon">📋</div>
+                <h3 style="color:var(--white);margin-bottom:6px;" id="stageName">—</h3>
+                <p style="margin-bottom:20px;" id="stageDesc">—</p>
+                <button class="btn btn-primary btn-lg" id="stageActionBtn" onclick="">Take Action →</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+     <section id="sec-documents" style="display:none;" class="stagger">
+        <div class="page-header"><h2>Documents</h2><p>Upload and manage your required documents</p></div>
+
+        <div id="docsLocked" class="card" style="display:none; text-align:center; padding:32px;">
+          <div style="text-align:center;padding:30px;">
+            <div style="font-size:2rem;margin-bottom:10px;">🔒</div>
+            <h3 style="color:var(--white);margin-bottom:8px;">Apply for Learner Permit First</h3>
+            <p style="margin-bottom:16px;">Documents can only be uploaded after your learner permit application is submitted.</p>
+            <button class="btn btn-primary" onclick="openModal('learnerModal')">Apply Now →</button>
+          </div>
+        </div>
+
+        <div id="docsUnlocked" style="display:none;">
+          
+		    <div class="card" id="stage1Card" style="margin-bottom: 20px; border-top: 4px solid var(--teal); position: relative;">
+		      
+		      <div class="lock-overlay" id="stage1Lock" style="display:none; background: rgba(10,15,30,0.65); backdrop-filter: blur(3px);">
+		          <div class="lock-msg" style="font-size: 1.05rem; background: rgba(0, 212, 170, 0.15); color: var(--teal); border: 1px solid var(--teal); padding: 14px 28px;">
+		              <span style="font-size:1.3rem;">✅</span> Stage 1: Identity Verified Successfully
+		          </div>
+		      </div>
+		
+		      <div class="card-header">
+		        <h3>Stage 1: Identity Verification</h3>
+		        <span class="badge badge-teal" id="s1Badge">NADRA Auto-Check</span>
+		      </div>
+		      <p style="color:var(--muted); font-size:0.85rem; margin-bottom: 16px;">
+		        Upload your CNIC and Passport Photo. These will be automatically verified against the NADRA database.
+		      </p>
+		      <div class="doc-list" id="stage1List">
+		      </div>
+		      
+		      <div id="nadraLoading" style="display:none; margin-top:20px; padding:15px; background:rgba(0,212,170,.05); border-radius:8px; border:1px solid rgba(0,212,170,.2); text-align:center;">
+		          <div style="font-size:1.5rem; margin-bottom:10px; animation: spin 2s linear infinite;">🔄</div>
+		          <h4 style="color:var(--teal); margin-bottom:5px;" id="nadraTitle">Connecting to NADRA...</h4>
+		          <div class="progress-bar"><div class="progress-fill teal" id="nadraFill" style="width:0%"></div></div>
+		      </div>
+		    </div>
+		
+		    <div class="card section-locked" id="stage2Card" style="border-top: 4px solid var(--gold); position: relative;">
+		      
+		      <div class="lock-overlay" id="stage2Lock">
+		          <div style="font-size: 2rem; margin-bottom: 10px;">🔒</div>
+		          <div class="lock-msg" style="font-size: 0.9rem;">Stage 1 Identity Verification must be completed first.</div>
+		      </div>
+		
+		      <div class="card-header">
+		        <h3>Stage 2: Medical Fitness</h3>
+		        <span class="badge badge-gold">Manual Officer Review</span>
+		      </div>
+		      <p style="color:var(--muted); font-size:0.85rem; margin-bottom: 16px;">
+		        Upload your Medical Certificate. You will need to wait for a Testing Officer to manually review and approve this document.
+		      </p>
+		      <div class="doc-list" id="stage2List">
+		         </div>
+		    </div>
+		
+		    <input type="file" id="globalFileInput" style="display:none" accept=".pdf,.jpg,.jpeg,.png" onchange="processSelectedFile(this)">
+		    
+		</div>
+      </section>
+
+      <!-- ════════════════ TESTS ════════════════ -->
+      <section id="sec-tests" style="display:none;" class="stagger">
+        <div class="page-header"><h2>Tests &amp; Scheduling</h2><p>Schedule and track your theory and driving tests</p></div>
+
+        <!-- Locked if no application -->
+        <div id="testsLocked" style="display:none;" class="card">
+          <div style="text-align:center;padding:30px;">
+            <div style="font-size:2rem;margin-bottom:10px;">🔒</div>
+            <h3 style="color:var(--white);margin-bottom:8px;">Apply for Learner Permit First</h3>
+            <p style="margin-bottom:16px;">Tests are available after your learner permit is approved and documents are submitted.</p>
+            <button class="btn btn-primary" onclick="openModal('learnerModal')">Apply Now →</button>
+          </div>
+        </div>
+
+        <div id="testsUnlocked" style="display:none;">
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-header"><h3>Upcoming Tests</h3></div>
+              <div id="upcomingTests"><p style="text-align:center;padding:16px;color:var(--muted);">Loading...</p></div>
+              <div class="divider"></div>
+              <button class="btn btn-primary" style="width:100%;" onclick="openScheduleModal()">+ Schedule New Test</button>
+            </div>
+            <div class="card">
+              <div class="card-header"><h3>Test History</h3></div>
+              <div id="testHistory"><p style="text-align:center;padding:16px;color:var(--muted);">Loading...</p></div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:16px;">
+            <div class="card-header">
+              <h3>Theory Test Practice</h3>
+              <span class="badge badge-teal">Available</span>
+            </div>
+            <p style="margin-bottom:16px;">Practice with sample questions before your official theory test. Results are NOT counted.</p>
+            <button class="btn btn-primary btn-lg" onclick="window.location.href='/test-page'">🧪 Start Practice Test →</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════════════ PAYMENTS ════════════════ -->
+      <section id="sec-payments" style="display:none;" class="stagger">
+        <div class="page-header"><h2>Payments</h2><p>View and manage your payment history</p></div>
+
+        <div class="stats-grid" style="margin-bottom:20px;">
+          <div class="stat-card green">
+            <div class="stat-icon green">✅</div>
+            <div class="stat-info"><div class="stat-value" id="paidTotal">—</div><div class="stat-label">Total Paid (PKR)</div></div>
+          </div>
+          <div class="stat-card gold">
+            <div class="stat-icon gold">⏳</div>
+            <div class="stat-info"><div class="stat-value" id="pendingTotal">—</div><div class="stat-label">Pending Amount (PKR)</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><h3>Payment History</h3></div>
+          <div id="paymentList"><p style="text-align:center;padding:16px;color:var(--muted);">No payment history.</p></div>
+        </div>
+      </section>
+
+      <!-- ════════════════ NOTIFICATIONS ════════════════ -->
+      <section id="sec-notifications" style="display:none;" class="stagger">
+        <div class="page-header"><h2>Notifications</h2><p>Your system alerts and updates</p></div>
+        <div class="card"><div id="allNotifList"><p style="text-align:center;padding:24px;color:var(--muted);">No notifications yet.</p></div></div>
+      </section>
+
+      <!-- ════════════════ PROFILE ════════════════ -->
+      <section id="sec-profile" style="display:none;" class="stagger">
+        
+        <div style="background: linear-gradient(90deg, #0f172a, #1e293b); border: 1px solid #00d4aa; border-radius: 12px; padding: 25px; display: flex; align-items: center; gap: 20px; margin-bottom: 25px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);">
+            <div style="position: relative;">
+                <div id="bigAvatar" style="width: 80px; height: 80px; border-radius: 50%; background: #00d4aa; color: #0f172a; font-size: 2.2rem; font-weight: 900; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 25px rgba(0, 212, 170, 0.6); overflow: hidden;">TA</div>
+                <div style="position: absolute; bottom: 0; right: 0; background: #00d4aa; color: #0f172a; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold; border: 2px solid #0f172a;">✓</div>
+            </div>
+            <div>
+                <h2 id="pTitleName" style="color: white; margin: 0 0 5px 0; font-size: 1.8rem;">Loading...</h2>
+                <div id="pTitleCnic" style="color: #00d4aa; margin-bottom: 12px; font-family: monospace; font-size: 1rem;">—</div>
+                <div style="display: flex; gap: 10px;">
+                    <span style="background: rgba(0,212,170,0.1); color: #00d4aa; padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; border: 1px solid rgba(0,212,170,0.3);">VERIFIED CITIZEN</span>
+                    <span style="background: rgba(245,158,11,0.1); color: #f59e0b; padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; border: 1px solid rgba(245,158,11,0.3);">ACTIVE APPLICANT</span>
+                </div>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 25px; align-items: flex-start;">
+          
+          <div style="flex: 2; background: #0f172a; border: 1px solid #1e293b; border-radius: 12px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+                <h3 style="color: white; margin: 0; font-size: 1.2rem;">Personal Information</h3>
+                <button class="btn" style="background: white; color: #00d4aa; padding: 6px 15px; border-radius: 6px; font-size: 0.85rem; font-weight: bold; border: none; cursor: pointer; transition: 0.3s;" onclick="toggleEdit()">✏️ Edit Details</button>
+            </div>
+            
+            <form id="profileForm">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                
+                <div>
+                    <label style="color: #00d4aa; font-size: 0.75rem; font-weight: 800; display: block; margin-bottom: 8px; text-transform: uppercase;">Full Name</label>
+                    <input id="pName" type="text" readonly style="width: 100%; background: #1e293b; border: 1px solid #334155; color: white; padding: 12px 15px; border-radius: 8px; font-size: 0.95rem; outline: none; transition: 0.3s;">
+                </div>
+                <div>
+                    <label style="color: #00d4aa; font-size: 0.75rem; font-weight: 800; display: block; margin-bottom: 8px; text-transform: uppercase;">CNIC</label>
+                    <input id="pCnic" type="text" readonly style="width: 100%; background: #1e293b; border: 1px solid #334155; color: white; padding: 12px 15px; border-radius: 8px; font-size: 0.95rem; outline: none;">
+                </div>
+                <div>
+                    <label style="color: #00d4aa; font-size: 0.75rem; font-weight: 800; display: block; margin-bottom: 8px; text-transform: uppercase;">Email</label>
+                    <input id="pEmail" type="text" readonly style="width: 100%; background: #1e293b; border: 1px solid #334155; color: white; padding: 12px 15px; border-radius: 8px; font-size: 0.95rem; outline: none;">
+                </div>
+                <div>
+                    <label style="color: #00d4aa; font-size: 0.75rem; font-weight: 800; display: block; margin-bottom: 8px; text-transform: uppercase;">Mobile</label>
+                    <input id="pMobile" type="text" readonly style="width: 100%; background: #1e293b; border: 1px solid #334155; color: white; padding: 12px 15px; border-radius: 8px; font-size: 0.95rem; outline: none;">
+                </div>
+                <div>
+                    <label style="color: #00d4aa; font-size: 0.75rem; font-weight: 800; display: block; margin-bottom: 8px; text-transform: uppercase;">Date of Birth</label>
+                    <input id="pDob" type="text" readonly style="width: 100%; background: #1e293b; border: 1px solid #334155; color: white; padding: 12px 15px; border-radius: 8px; font-size: 0.95rem; outline: none;">
+                </div>
+                <div>
+                    <label style="color: #00d4aa; font-size: 0.75rem; font-weight: 800; display: block; margin-bottom: 8px; text-transform: uppercase;">District</label>
+                    <input id="pDistrict" type="text" readonly style="width: 100%; background: #1e293b; border: 1px solid #334155; color: white; padding: 12px 15px; border-radius: 8px; font-size: 0.95rem; outline: none;">
+                </div>
+                
+              </div>
+              <button id="saveProfile" type="submit" class="btn btn-primary" style="display:none; width:100%; margin-top: 25px; padding: 12px; font-size: 1.05rem; background: #00d4aa; color: #0f172a; font-weight: bold; border: none; border-radius: 8px;">💾 Save Changes</button>
+            </form>
+          </div>
+
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 25px;">
+              
+              <div style="background: #0f172a; border: 1px solid #f59e0b; border-radius: 12px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                <h3 style="color: white; margin: 0 0 20px 0; font-size: 1.1rem;">Security Settings</h3>
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="color: #f59e0b; font-size: 0.7rem; font-weight: bold; display: block; margin-bottom: 8px; text-transform: uppercase;">Current Password</label>
+                    <input type="password" placeholder="••••••••" style="width: 100%; background: #1e293b; border: 1px solid #334155; color: white; padding: 10px 12px; border-radius: 8px; outline: none;">
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <label style="color: #f59e0b; font-size: 0.7rem; font-weight: bold; display: block; margin-bottom: 8px; text-transform: uppercase;">New Password</label>
+                    <input type="password" placeholder="New password" style="width: 100%; background: #1e293b; border: 1px solid #334155; color: white; padding: 10px 12px; border-radius: 8px; outline: none;">
+                </div>
+                
+                <button style="width: 100%; padding: 10px; background: #00d4aa; color: #0f172a; font-weight: bold; border: none; border-radius: 8px; cursor: pointer;">Update Password</button>
+              </div>
+              
+              <div style="background: linear-gradient(135deg, rgba(30,41,59,0.6), rgba(15,23,42,0.8)); border: 1px solid #334155; border-radius: 12px; padding: 25px; text-align: center;">
+                  <div style="font-size: 2.5rem; margin-bottom: 10px; text-shadow: 0 0 15px rgba(56, 189, 248, 0.5);">🛡️</div>
+                  <h4 style="color: white; margin: 0 0 8px 0;">Secure Account</h4>
+                  <p style="color: #94a3b8; font-size: 0.85rem; margin: 0; line-height: 1.5;">Your DLMS account is secured using industry standard AES-256 encryption.</p>
+              </div>
+              
+          </div>
+        </div>
+      </section>
+
+    </div><!-- /page-content -->
+  </div><!-- /main-content -->
+</div><!-- /app-shell -->
+
+<!-- ════════════ LEARNER PERMIT MODAL ════════════ -->
+<div class="modal-overlay" id="learnerModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>🪪 Apply for Learner Permit</h3>
+      <button class="close-btn" onclick="closeModal('learnerModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:rgba(0,212,170,.06);border:1px solid rgba(0,212,170,.15);border-radius:var(--r);padding:12px;margin-bottom:18px;font-size:.8rem;color:var(--muted);">
+        <strong style="color:var(--teal);">ℹ What is a Learner Permit?</strong><br>
+        A Learner Permit is a temporary permit that allows you to practice driving under supervision.
+        It is valid for <strong style="color:var(--white);">6 months</strong> and is the first step toward a driving license.
+      </div>
+      <div class="form-group">
+        <label class="form-label">License Category <span style="color:var(--red);">*</span></label>
+        <select class="form-control" id="learnerCategory">
+          <option value="">Select category...</option>
+          <option value="A">Category A — Motorcycle</option>
+          <option value="B">Category B — Car / Light Vehicle</option>
+          <option value="C">Category C — Commercial Vehicle</option>
+          <option value="LTV">LTV — Light Transport Vehicle</option>
+          <option value="HTV">HTV — Heavy Transport Vehicle</option>
+        </select>
+      <div class="form-group">
+        <label class="form-label">Preferred Language</label>
+        <select class="form-control" id="learnerLang">
+          <option value="EN">English</option>
+          <option value="UR">Urdu (اردو)</option>
+        </select>
+      </div>
+      <div style="background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:18px;">
+        <div style="font-size:.75rem;font-weight:600;color:var(--white);margin-bottom:8px;">After applying you will need to:</div>
+        <div style="display:flex;flex-direction:column;gap:6px;font-size:.75rem;color:var(--muted);">
+          <div>📎 Upload CNIC copy, passport photo, and medical certificate</div>
+          <div>📝 Pass the computer-based theory test (70% minimum)</div>
+          <div>🚗 Pass the practical driving test</div>
+          <div>💳 Pay the license issuance fee</div>
+        </div>
+      </div>
+      <button class="btn btn-primary" style="width:100%;" id="submitLearnerBtn" onclick="submitLearnerApplication()">
+        Submit Learner Permit Application →
+      </button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ════════════ RENEWAL MODAL ════════════ -->
+<div class="modal-overlay" id="renewalModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>🔄 Apply for License Renewal</h3>
+      <button class="close-btn" onclick="closeModal('renewalModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:rgba(255,193,7,.06);border:1px solid rgba(255,193,7,.2);border-radius:var(--r);padding:12px;margin-bottom:18px;font-size:.8rem;color:var(--muted);">
+        <strong style="color:var(--gold);">ℹ Renewal Requirements</strong><br>
+        You will skip the Learner and Theory Test phases. Please ensure you have your old license number and a fresh medical certificate ready to upload.
+      </div>
+      <div class="form-group">
+        <label class="form-label">Old License Number <span style="color:var(--red);">*</span></label>
+        <input type="text" id="oldLicenseNumber" class="form-control" placeholder="e.g. LHR-123456" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">License Category <span style="color:var(--red);">*</span></label>
+        <select class="form-control" id="renewalCategory">
+          <option value="">Select category...</option>
+          <option value="A">Category A — Motorcycle</option>
+          <option value="B">Category B — Car / Light Vehicle</option>
+          <option value="C">Category C — Commercial Vehicle</option>
+          <option value="LTV">LTV — Light Transport Vehicle</option>
+          <option value="HTV">HTV — Heavy Transport Vehicle</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" style="width:100%; margin-top:10px;" id="submitRenewalBtn" onclick="submitRenewalApplication()">
+        Submit Renewal Application →
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── SCHEDULE TEST MODAL ── -->
+<div class="modal-overlay" id="scheduleModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Schedule Driving Test</h3>
+      <button class="close-btn" onclick="closeModal('scheduleModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="schedTestType" value="DRIVING">
+
+      <!-- Replace your current Test Center form-group with this -->
+	<div class="form-group">
+	  <label class="form-label">Select Test Center <span style="color:var(--red);">*</span></label>
+	  <select class="form-control" id="schedCenterSelect" onchange="loadBusyDatesForCenter(this.value)">
+	    <option value="Lahore Motor Registration Authority">Lahore Motor Registration Authority</option>
+	    <option value="Rawalpindi DLMS Office">Rawalpindi DLMS Office</option>
+	    <!-- Add other centers here as needed -->
+	  </select>
+	</div>
+
+      <!-- Date picker with weekend + busy-day enforcement -->
+      <div class="form-group">
+        <label class="form-label">Preferred Date
+          <span style="margin-left:6px; font-size:0.7rem; color:var(--muted);">Mon–Fri only</span>
+        </label>
+        <input type="date" class="form-control" id="schedDate" min=""
+               onchange="validateScheduleDate(this)">
+
+        <!-- Capacity indicator shown after a date is picked -->
+        <div id="schedDateFeedback" style="margin-top:6px; font-size:0.78rem; display:none;"></div>
+      </div>
+
+      <!-- Loading state while busy-dates are being fetched -->
+      <div id="schedBusyDatesStatus" style="font-size:0.75rem; color:var(--muted); margin-bottom:12px; display:none;">
+        ⏳ Checking availability…
+      </div>
+
+      <button class="btn btn-primary" id="btnConfirmSchedule" style="width:100%;" onclick="scheduleTest()">
+        Confirm Scheduling →
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── PAY MODAL ── -->
+<div class="modal-overlay" id="payModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Submit Learner Fee (Rs. 300)</h3>
+      <button class="close-btn" onclick="closeModal('payModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Payment Method</label>
+        <select class="form-control" id="payMethod">
+          <option value="JAZZCASH">JazzCash</option>
+          <option value="EASYPAISA">EasyPaisa</option>
+          <option value="BANK">Bank Transfer</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Transaction ID / Reference Number</label>
+        <input type="text" class="form-control" id="transactionIdInput" placeholder="Enter T-ID (e.g. T678...)">
+      </div>
+      <button class="btn btn-primary" style="width:100%;" id="confirmPayBtn" onclick="submitPayment()">
+        Submit for Officer Verification →
+      </button>
+    </div>
+  </div>
+</div>
+
+<script th:src="@{/js/script.js}"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════
+   DLMS — Applicant Dashboard (Fully Dynamic)
+   All data comes from API calls. No hardcoded data.
+   Learner-first flow: must apply for learner permit before
+   anything else is unlocked.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── STEP DEFINITIONS ── */
+const STEPS = [
+  { id:'LEARNER',  label:'Learner Permit',  icon:'1' },
+  { id:'DOCS',     label:'Documents',       icon:'2' },
+  { id:'MEDICAL',  label:'Medical Cert.',   icon:'3' },
+  { id:'THEORY',   label:'Theory Test',     icon:'4' },
+  { id:'DRIVING',  label:'Driving Test',    icon:'5' },
+  { id:'PAYMENT',  label:'Payment',         icon:'6' },
+  { id:'LICENSE',  label:'License Issued',  icon:'★' },
+];
+
+/* Stage → next step info */
+const STAGE_META = {
+  LEARNER_PENDING: { icon:'🪪', name:'Learner Permit Submitted', desc:'Pending approval from the licensing officer.', action:null },
+  LEARNER_PAYMENT_PENDING: { icon:'💳', name:'Learner Fee Pending', desc:'Please pay the Rs. 300 learner fee.', action:null },
+  LEARNER_FEE_PENDING: { icon:'❌', name:'Learner Fee Rejected', desc:'Your payment was rejected. Please re-submit.', action:null },
+  PAYMENT_VERIFICATION: { icon:'⏳', name:'Fee Verification', desc:'Officer is verifying your payment receipt.', action:null },
+  LEARNER_ISSUED: { 
+      icon: '✅', 
+      name: 'Learner Permit Issued!', 
+      desc: 'Congratulations! Your learner permit is active. You must wait the mandatory 42-day period before applying for your permanent license tests.', 
+      action: 'documents' 
+  },
+  DOCS: { icon:'📁', name:'Documents Required', desc:'Please upload your CNIC copy and passport photo.', action:'documents' },
+  MEDICAL: { icon:'🏥', name:'Medical Required', desc:'Upload your PMDC medical fitness certificate.', action:'documents' },
+  MEDICAL_PENDING: { icon:'⏳', name:'Medical Review', desc:'Officer is verifying your medical certificate.', action:'documents' },
+  THEORY_PENDING: { icon:'📝', name:'Theory Test', desc:'Pass the computer theory test (70% required).', action:'tests' },
+  TESTS_PENDING: { icon:'📝', name:'Theory Test', desc:'Pass the computer theory test (70% required).', action:'tests' },
+  PRACTICAL_PENDING: { icon:'🚗', name:'Driving Test', desc:'Pass your road driving test.', action:'tests' },
+  PAYMENT: { icon:'💳', name:'Final Fee Pending', desc:'Pay the license issuance fee.', action:'payments' },
+  LICENSE_PAYMENT_PENDING: { icon:'💳', name:'Final Fee Pending', desc:'Pay the license issuance fee.', action:'payments' },
+  LICENSE_FEE_PENDING: { icon:'💳', name:'Final Fee Pending', desc:'Pay the license issuance fee to generate your permanent license.', action:null },
+  LICENSE_GENERATION_PENDING: { icon:'✨', name:'License Generation', desc:'Review your details and generate your license.', action:null },
+  FINAL_PAYMENT_VERIFICATION: { icon:'⏳', name:'Final Verification', desc:'Officer is verifying your final payment.', action:null },
+  FINAL_REVIEW: { icon:'🔐', name:'Final Review', desc:'Officer is cryptographically signing your license.', action:null },
+  REVIEW: { icon:'⏳', name:'Under Review', desc:'Application is being reviewed.', action:null },
+  LICENSE_READY: { icon:'🪪', name:'License Issued', desc:'Congratulations! Your permanent driving license is active.', action:null },
+  COMPLETED: { icon:'🪪', name:'License Issued', desc:'Congratulations! Your permanent driving license is active.', action:null }
+};
+
+let currentUser  = null;
+let currentAppId = null;
+let currentApp   = null;
+let hasApplication = false;
+let editMode     = false;
+let licenseIsSuspended = false; // ── Track suspension state across function calls
+
+/**
+ * ── VISUAL STAMP: Applies the BLOCKED stamp over the license card ──
+ * This function wraps the existing license card in a container to apply
+ * a blur effect and a red stamp animation.
+ */
+function applySuspendedStamp(isSuspended) {
+    licenseIsSuspended = isSuspended;
+    const card = document.getElementById('printableLicenseCard');
+    
+    // Remove any existing wrapper to prevent duplicates on re-render
+    const existing = document.getElementById('suspendedStampWrapper');
+    if (existing) existing.replaceWith(...existing.childNodes);
+
+    if (!card || !isSuspended) return;
+
+    // Wrap the card in the animation container
+    const wrapper = document.createElement('div');
+    wrapper.id = 'suspendedStampWrapper';
+    wrapper.className = 'license-suspended-wrapper';
+    card.parentNode.insertBefore(wrapper, card);
+    wrapper.appendChild(card);
+
+    // Blur overlay (sits over the card visually)
+    const blur = document.createElement('div');
+    blur.className = 'license-blur-overlay';
+    wrapper.appendChild(blur);
+
+    // Stamp overlay
+    const stamp = document.createElement('div');
+    stamp.className = 'license-suspended-stamp';
+    stamp.innerHTML = `
+        <div class="license-suspended-stamp-inner">
+            <div class="stamp-text">BLOCKED</div>
+            <div class="stamp-sub">License Suspended · Punjab DLMS</div>
+        </div>`;
+    wrapper.appendChild(stamp);
+}
+
+/* ── INIT: Application Dashboard Startup ── */
+document.addEventListener('DOMContentLoaded', async () => {
+    currentUser = Session.user;
+
+    // 1. Fetch User Data
+    if (!currentUser) {
+        try {
+            const res = await API.get('/api/applicant/me');
+            if (res?.data) {
+                currentUser = res.data;
+                Session.user = res.data;
+            }
+        } catch (err) {
+            currentUser = Session.user;
+        }
+    }
+
+    if (!currentUser) {
+        currentUser = {
+            fullNameEn: 'Test Applicant',
+            cnic: '35202-0000000-1',
+            email: 'test@dlms.pk',
+            role: 'APPLICANT',
+            userId: 1
+        };
+    }
+
+    // 2. Initialize UI
+    document.getElementById('sidebarName').textContent = currentUser.fullNameEn || 'Applicant';
+    document.getElementById('sidebarAvatar').textContent = fmt.initials(currentUser.fullNameEn);
+    fillProfile();
+
+    const schedDate = document.getElementById('schedDate');
+    if (schedDate) {
+        schedDate.min = new Date().toISOString().split('T')[0];
+    }
+
+    // 3. District Configuration
+    window.DISTRICT_CENTER_MAP = {
+        'Lahore': 'Lahore Motor Registration Authority',
+        'Rawalpindi': 'Rawalpindi DLMS Office',
+        'Islamabad': 'Islamabad DLMS Center',
+        'Faisalabad': 'Faisalabad Testing Center',
+        'Multan': 'Multan Motor Registration Authority',
+        'Gujranwala': 'Gujranwala DLMS Office'
+    };
+
+    // 4. Initialize Test Center (with error checking to prevent crashes)
+    function initDistrictCenter() {
+        const centerInput = document.getElementById('schedCenter');
+        const centerDisplay = document.getElementById('schedCenterDisplay');
+
+        if (centerInput && centerDisplay) {
+            const district = currentUser?.district || '';
+            const center = window.DISTRICT_CENTER_MAP[district] || 'Lahore Motor Registration Authority';
+            
+            centerInput.value = center;
+            centerDisplay.value = center;
+        } else {
+            console.warn("initDistrictCenter: 'schedCenter' or 'schedCenterDisplay' elements not found. Skipping initialization.");
+        }
+    }
+
+    initDistrictCenter();
+
+    // 5. Load Data
+    await loadAll();
+
+    // 6. Real-time Polling for Status Updates
+    setInterval(async () => {
+        await loadNotifications();
+        // If they are waiting for officer payment verification, check status automatically
+        if (currentApp && currentApp.currentStage === 'PAYMENT_VERIFICATION') {
+            await loadApplication();
+        }
+    }, 15000);
+});
+
+async function loadAll() {
+	  if(window.Loader) Loader.show('Loading your dashboard...');
+	  try {
+	    // 1. Load the main app and notifications first
+	    await Promise.all([
+	      loadApplication(),
+	      loadNotifications()
+	    ]);
+	    
+	    // 2. 🚨 THIS WAS MISSING: Now load the penalty points and violations table!
+	    await renderPenaltyPointsAndViolations();
+	    
+	  } catch(e) {
+	    if(window.Toast) Toast.error('Some data could not be loaded.');
+	    console.error(e);
+	  } finally {
+	    if(window.Loader) Loader.hide();
+	  }
+	}
+/* ══════════════════════════════════════════
+   LOAD APPLICATION
+   ══════════════════════════════════════════ */
+   async function loadApplication() {
+	   try {
+	     const res  = await API.get('/api/applicant/applications');
+	     
+	     // ── BULLETPROOF ARRAY PARSING ──
+	     // The backend may return the array directly, or wrapped in {data: [...]},
+	     // or even wrapped in {data: {content: [...]}} (Spring Page objects).
+	     // We handle all three cases gracefully.
+	     let apps = [];
+	     if (Array.isArray(res)) {
+	         apps = res;                          // Plain array response
+	     } else if (Array.isArray(res?.data)) {
+	         apps = res.data;                     // Wrapped in {data: [...]}
+	     } else if (Array.isArray(res?.data?.content)) {
+	         apps = res.data.content;             // Spring Page object
+	     } else if (res?.applicationId) {
+	         apps = [res];                        // Single object (not array)
+	     } else if (res?.data?.applicationId) {
+	         apps = [res.data];                   // Single object wrapped in data
+	     }
+
+	     if (!apps.length) {
+	       showNoApplicationState();
+	       return;
+	     }
+
+	     currentApp   = apps[0];
+	     currentAppId = currentApp.applicationId; // <--- ENSURE THIS LINE IS HERE
+	     hasApplication = true;
+
+	     showApplicationState(currentApp);
+	     await Promise.all([ loadDocuments(), loadTests(), loadPayments() ]);
+
+	   } catch(e) {
+	     console.error('loadApplication error:', e);
+	     showNoApplicationState();
+	   }
+	 }
+
+/* Show state: no application exists yet (CRASH-PROOF VERSION) */
+function showNoApplicationState() {
+  hasApplication = false;
+
+  // Helper to safely toggle display
+  const toggle = (id, display) => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = display;
+  };
+
+  // Helper to safely set text
+  const setText = (id, text) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  };
+
+  /* Toggle Sections */
+  toggle('actionHub', 'block');
+  toggle('dashboardWithApp', 'none');
+  toggle('noAppMessage', 'block');
+  toggle('appDetailsSection', 'none');
+
+  /* Docs / Tests locked */
+  toggle('docsLocked', 'block');
+  toggle('docsUnlocked', 'none');
+  toggle('testsLocked', 'block');
+  toggle('testsUnlocked', 'none');
+
+  /* Zero out stats (The Fix for the "null" error) */
+  setText('statNotifsEmpty', '0');
+  setText('notifCount', '0');
+}
+
+/* Show state: application exists */
+function showApplicationState(app) {
+  document.getElementById('actionHub').style.display = 'none';
+  document.getElementById('dashboardWithApp').style.display = 'block';
+  document.getElementById('noAppMessage').style.display = 'none';
+  document.getElementById('appDetailsSection').style.display = 'block';
+
+  if (app.currentStage === 'LEARNER_FEE_PENDING' && app.activeChallanNo && app.activeChallanNo.includes('-LIC-')) {
+      app.currentStage = 'LICENSE_FEE_PENDING';
+  }
+
+  const stage = app.currentStage || 'LEARNER_PENDING';
+
+  const docsFinished = ['LEARNER_ISSUED', 'DOCS', 'MEDICAL', 'MEDICAL_PENDING', 'THEORY_PENDING', 'TESTS_PENDING', 'PRACTICAL_PENDING', 'PAYMENT', 'LICENSE_PAYMENT_PENDING', 'LICENSE_FEE_PENDING', 'LICENSE_GENERATION_PENDING', 'FINAL_REVIEW', 'FINAL_PAYMENT_VERIFICATION', 'REVIEW', 'LICENSE_READY', 'COMPLETED'].includes(stage);
+  const testsFinished = ['THEORY_PENDING', 'TESTS_PENDING', 'PRACTICAL_PENDING', 'PAYMENT', 'LICENSE_PAYMENT_PENDING', 'LICENSE_FEE_PENDING', 'LICENSE_GENERATION_PENDING', 'FINAL_REVIEW', 'FINAL_PAYMENT_VERIFICATION', 'REVIEW', 'LICENSE_READY', 'COMPLETED'].includes(stage);
+
+  const isDocsLocked = !docsFinished;
+  const isTestsLocked = !testsFinished;
+
+  document.getElementById('docsLocked').style.display = isDocsLocked ? 'block' : 'none';
+  document.getElementById('docsUnlocked').style.display = isDocsLocked ? 'none' : 'block';
+  document.getElementById('testsLocked').style.display = isTestsLocked ? 'block' : 'none';
+  document.getElementById('testsUnlocked').style.display = isTestsLocked ? 'none' : 'block';
+
+  const navDocs = document.getElementById('nav-documents');
+  if (navDocs) isDocsLocked ? navDocs.classList.add('locked') : navDocs.classList.remove('locked');
+
+  const navTests = document.getElementById('nav-tests');
+  if (navTests) isTestsLocked ? navTests.classList.add('locked') : navTests.classList.remove('locked');
+
+  document.getElementById('statAppId').textContent = app.applicationId;
+
+  const stageIdx = getStageIndex(stage);
+  const pct = Math.round((stageIdx / (STEPS.length - 1)) * 100);
+  renderSteps(stage, pct);
+
+  const statDaysEl = document.getElementById('statDaysLeft');
+  if (isDocsLocked) {
+      statDaysEl.textContent = '—';
+  } else {
+      // 🚨 FIX 1: Added THEORY_PENDING here!
+      const pastMedical = ['THEORY_PENDING', 'TESTS_PENDING', 'PRACTICAL_PENDING', 'PAYMENT', 'LICENSE_PAYMENT_PENDING', 'LICENSE_FEE_PENDING', 'LICENSE_GENERATION_PENDING', 'FINAL_REVIEW', 'FINAL_PAYMENT_VERIFICATION', 'REVIEW', 'LICENSE_READY', 'COMPLETED'].includes(stage);
+      if (pastMedical) {
+          statDaysEl.textContent = '—';
+      } else {
+          const issued = new Date(app.issueDate || app.submissionDate || Date.now());
+          const diffDays = Math.floor(Math.abs(Date.now() - issued) / 86400000);
+          statDaysEl.textContent = diffDays >= 41 ? "41+" : `${diffDays} / 41`;
+      }
+  }
+
+  let testsPassed = 0;
+  if (['PRACTICAL_PENDING', 'PAYMENT', 'LICENSE_PAYMENT_PENDING', 'LICENSE_FEE_PENDING', 'LICENSE_GENERATION_PENDING', 'FINAL_REVIEW', 'FINAL_PAYMENT_VERIFICATION', 'REVIEW', 'LICENSE_READY', 'COMPLETED'].includes(stage)) {
+      testsPassed = 1;
+  }
+  if (['PAYMENT', 'LICENSE_PAYMENT_PENDING', 'LICENSE_FEE_PENDING', 'LICENSE_GENERATION_PENDING', 'FINAL_REVIEW', 'FINAL_PAYMENT_VERIFICATION', 'REVIEW', 'LICENSE_READY', 'COMPLETED'].includes(stage)) {
+      testsPassed = 2;
+  }
+
+  if (!isDocsLocked) {
+      document.getElementById('statTests').textContent = `${testsPassed} / 2`;
+  } else {
+      document.getElementById('statTests').textContent = '—';
+  }
+
+  const statusClass = {
+    PENDING:'badge-amber', UNDER_REVIEW:'badge-gold',
+    APPROVED:'badge-teal', REJECTED:'badge-red', CANCELLED:'badge-muted',
+    PAYMENT_VERIFICATION: 'badge-gold'
+  }[app.applicationStatus] || 'badge-muted';
+  
+  document.getElementById('appStatusBadge').className = 'badge ' + statusClass;
+  document.getElementById('appStatusBadge').textContent = app.applicationStatus || '—';
+
+  document.getElementById('appDetails').innerHTML = [
+    ['Application ID',  '#' + app.applicationId],
+    ['Type',            app.applicationType       || '—'],
+    ['Category',        app.licenseCategory       || '—'],
+    ['Status',          app.applicationStatus     || '—'],
+    ['Submitted',       fmt.date(app.submissionDate)],
+    ['Last Updated',    app.lastUpdatedDate ? fmt.date(app.lastUpdatedDate) : '—'],
+  ].map(([l,v]) => `
+    <div style="background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:var(--r);padding:12px;">
+      <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;">${l}</div>
+      <div style="font-size:.9rem;font-weight:600;color:var(--white);">${v}</div>
+    </div>`).join('');
+
+  renderTimeline(stage);
+  renderCurrentStage(stage, app);
+  renderLicenseCard(app);
+  renderActivity(app);
+  renderPenaltyPoints(app);
+
+  // 🚨 FIX 2: Added THEORY_PENDING to the Medical Approved popup logic
+  if (app.currentStage === 'THEORY_PENDING' || app.currentStage === 'TESTS_PENDING') {
+      if (!localStorage.getItem('medicalNotified_' + app.applicationId)) {
+          Swal.fire({
+              icon: 'success',
+              title: 'Medical Approved!',
+              text: 'You are now eligible to take your Theory Test.',
+              confirmButtonColor: 'var(--teal)'
+          });
+          localStorage.setItem('medicalNotified_' + app.applicationId, 'true');
+      }
+  }
+}
+
+/* ── STEP RENDERING ── */
+function getStageIndex(stage) {
+  const stageToStep = {
+    'LEARNER_PENDING': 0, 'LEARNER_PAYMENT_PENDING': 0, 'PAYMENT_VERIFICATION': 0, 'LEARNER_FEE_PENDING': 0,
+    'LEARNER_ISSUED': 1, 'DOCS': 1,
+    'MEDICAL': 2, 'MEDICAL_PENDING': 2,
+    'THEORY_PENDING': 3, 'TESTS_PENDING': 3, 'THEORY_PASSED': 3,
+    'PRACTICAL_PENDING': 4,
+    
+    // 🚨 ADDED LICENSE_FEE_PENDING HERE SO PROGRESS STAYS AT 5
+    'PAYMENT': 5, 'LICENSE_PAYMENT_PENDING': 5, 'LICENSE_FEE_PENDING': 5, 'REVIEW': 5, 
+    'LICENSE_GENERATION_PENDING': 5, 'FINAL_REVIEW': 5, 'FINAL_PAYMENT_VERIFICATION': 5,
+    
+    'LICENSE_READY': 6, 'COMPLETED': 6
+  };
+  return stageToStep[stage] ?? 0;
+}
+
+/* ── STEP RENDERING ── */
+function renderSteps(activeStage, pct) {
+  // 🚨 FIX: If fully complete, artificially push the index past the end so everything gets a green checkmark!
+  const isFullyComplete = ['LICENSE_READY', 'COMPLETED', 'APPROVED'].includes(activeStage) || currentApp?.applicationStatus === 'APPROVED';
+  const activeIdx = isFullyComplete ? 99 : getStageIndex(activeStage);
+  
+  document.getElementById('progressSteps').innerHTML = STEPS.map((s, i) => `
+    <div class="ps-item ${i < activeIdx ? 'done' : i === activeIdx ? 'active' : ''}">
+      <div class="ps-dot ${i < activeIdx ? 'done' : i === activeIdx ? 'active' : 'pending'}">
+        ${i < activeIdx ? '✓' : s.icon}
+      </div>
+      <div class="ps-label">${s.label}</div>
+    </div>`).join('');
+
+  const badge = document.getElementById('progressBadge');
+  if (isFullyComplete) {
+    badge.className   = 'badge badge-teal';
+    badge.textContent = 'Complete ✓';
+    pct = 100; // Force 100%
+  } else if (activeStage === 'LEARNER_PENDING') {
+    badge.className   = 'badge badge-amber';
+    badge.textContent = 'Pending Approval';
+  } else {
+    badge.className   = 'badge badge-gold';
+    badge.textContent = 'In Progress';
+  }
+
+  document.getElementById('overallProgress').style.width = pct + '%';
+  document.getElementById('progressPct').textContent     = pct + '% Complete';
+}
+
+/* ── TIMELINE ── */
+function renderTimeline(activeStage) {
+  const isFullyComplete = ['LICENSE_READY', 'COMPLETED', 'APPROVED'].includes(activeStage) || currentApp?.applicationStatus === 'APPROVED';
+  const activeIdx = isFullyComplete ? 99 : getStageIndex(activeStage);
+  
+  const DESCRIPTIONS = {
+    LEARNER:  'Apply and receive your learner permit (valid for 6 months).',
+    DOCS:     'Upload CNIC copy, passport photo, and all required documents.',
+    MEDICAL:  'Upload medical fitness certificate from a PMDC registered doctor.',
+    THEORY:   'Pass the computer-based MCQ theory test with ≥70%.',
+    DRIVING:  'Pass the practical road driving test with a certified examiner.',
+    PAYMENT:  'Pay the driving license issuance fee.',
+    LICENSE:  'Permanent driving license issued and ready for collection.',
+  };
+  
+  document.getElementById('appTimeline').innerHTML = STEPS.map((s, i) => {
+    const state = i < activeIdx ? 'done' : i === activeIdx ? 'active' : 'pending';
+    return `
+    <div class="timeline-step">
+      <div class="timeline-line ${i < activeIdx ? 'done' : ''}"></div>
+      <div class="timeline-dot ${state}">${i < activeIdx ? '✓' : i+1}</div>
+      <div class="timeline-content">
+        <div class="t-title">${s.label}</div>
+        <div class="t-sub">${DESCRIPTIONS[s.id] || ''}</div>
+        ${state === 'done'   ? '<div class="t-date" style="color:var(--teal);">Completed ✓</div>' : ''}
+        ${state === 'active' ? '<div class="t-date" style="color:var(--amber);">In Progress</div>' : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ── CURRENT STAGE PANEL ── */
+function renderCurrentStage(stage, app) {
+  const meta = STAGE_META[stage] || STAGE_META['REVIEW'];
+  document.getElementById('stageIcon').textContent = meta.icon;
+  document.getElementById('stageName').textContent = meta.name;
+  document.getElementById('stageDesc').textContent = meta.desc;
+
+  const actionBtn = document.getElementById('stageActionBtn');
+  if (meta.action) {
+    actionBtn.style.display = 'inline-flex';
+    actionBtn.onclick = () => showSection(meta.action, document.getElementById('nav-' + meta.action));
+    actionBtn.textContent = 'Take Action →';
+  } else if (stage === 'LICENSE_READY') {
+    actionBtn.style.display = 'none';
+  } else {
+    actionBtn.style.display = 'none';
+  }
+
+  /* Rejection notice */
+  if (app.applicationStatus === 'REJECTED' && app.rejectionReason) {
+    document.getElementById('stageName').textContent = 'Application Rejected';
+    document.getElementById('stageIcon').textContent = '❌';
+    document.getElementById('stageDesc').textContent =
+      'Reason: ' + app.rejectionReason + '. You may re-apply with the correct documents.';
+    actionBtn.style.display = 'inline-flex';
+    actionBtn.textContent   = 'Apply Again →';
+    actionBtn.onclick       = () => openModal('learnerModal');
+  }
+}
+
+/* ── LICENSE / LEARNER PERMIT CARD ── */
+function renderLicenseCard(app) {
+  if (!app) return;
+
+  const stage = app.currentStage || 'LEARNER_PENDING';
+  const user = currentUser || {};
+
+  // Reset all views to clear previous states
+  const lpView = document.getElementById('learnerPermitView');
+  const plView = document.getElementById('permanentLicenseView');
+  const pdView = document.getElementById('pendingLicenseView');
+
+  if (lpView) lpView.style.display = 'none';
+  if (plView) plView.style.display = 'none';
+  if (pdView) pdView.style.display = 'none';
+  
+  document.getElementById('licenseCardTitle').textContent = 'My License';
+  document.getElementById('licenseTypeBadge').className = 'badge badge-muted';
+  document.getElementById('licenseTypeBadge').textContent = '—';
+
+  // 1. ─── PAYMENT LOCK: RS. 300 FEE ───
+  if (stage === 'LEARNER_PAYMENT_PENDING') {
+    document.getElementById('licenseCardTitle').textContent = 'Action Required';
+    document.getElementById('licenseTypeBadge').className = 'badge badge-amber';
+    document.getElementById('licenseTypeBadge').textContent = 'PAYMENT DUE';
+
+    if (pdView) {
+      pdView.style.display = 'block';
+      
+      // 🚨 THE FIX 1: Hide the confusing "Application Under Review" title
+      if(document.getElementById('pendingStatusTitle')) document.getElementById('pendingStatusTitle').style.display = 'none';
+      if(document.getElementById('pendingStatusIcon')) document.getElementById('pendingStatusIcon').style.display = 'none';
+
+      // 🚨 THE FIX 2: Generate the Challan Number dynamically for the INITIAL payment!
+      const challanNo = app.activeChallanNo || `CHL-${new Date().getFullYear()}-APP-${app.applicationId}`;
+      
+      document.getElementById('pendingStatusLine').innerHTML = `
+          <h3 style="color:var(--white); margin-bottom: 15px;">Learner Permit Fee</h3>
+          
+          <div style="border: 1px solid var(--border); border-radius: 12px; padding: 20px; background: rgba(255,255,255,0.02); margin-bottom: 20px;">
+              <h4 style="color: var(--teal); margin-bottom: 10px;">Please pay the initial fee to process your application.</h4>
+              <p style="color: var(--muted); font-size: 0.9rem; margin-bottom: 15px;">Upload your payment receipt (JazzCash/EasyPaisa/Bank) below.</p>
+              
+              <div style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; margin-bottom: 20px; display: inline-block; min-width: 250px; border: 1px solid rgba(255,255,255,0.1);">
+                  <div style="font-size: 0.75rem; color: var(--muted); text-transform: uppercase;">Pay against Challan No.</div>
+                  <div style="font-size: 1.3rem; font-weight: bold; color: var(--gold); font-family: monospace; letter-spacing: 2px;">
+                      ${challanNo}
+                  </div>
+              </div>
+              <br>
+              <button class="btn btn-success" onclick="openModal('payModal')">Submit Payment Receipt</button>
+          </div>
+      `;
+    }
+    return;
+  }
+
+  // 2. ─── EXPIRY LOCK: RENEWAL LOGIC ───
+  const expiryDate = app.learnerExpiryDate ? new Date(app.learnerExpiryDate) : null;
+  const isExpired = expiryDate && expiryDate < new Date();
+
+  if (isExpired) {
+    document.getElementById('licenseCardTitle').textContent = 'Permit Expired';
+    document.getElementById('licenseTypeBadge').className = 'badge badge-red';
+    document.getElementById('licenseTypeBadge').textContent = 'EXPIRED';
+
+    if (pdView) {
+      pdView.style.display = 'block';
+      document.getElementById('pendingStatusLine').innerHTML = `
+        <div style="border: 1px solid var(--red); padding: 18px; border-radius: var(--r); text-align: center; background: rgba(244,67,54,0.05);">
+          <p style="color: var(--red); margin-bottom: 12px; font-size: 0.85rem;">
+            Your permit expired on <strong>${fmt.date(expiryDate)}</strong>
+          </p>
+          <button class="btn btn-primary" style="width:100%" onclick="handleRenewal(${app.applicationId})">
+            Renew Now (Rs. 300)
+          </button>
+        </div>
+      `;
+    }
+    return;
+  }
+  
+  if (stage === 'PAYMENT_VERIFICATION') {
+      pdView.style.display = 'block';
+      
+      // 🚨 THE FIX: Explicitly set the titles so the screen updates completely
+      document.getElementById('licenseCardTitle').textContent = 'Verification in Progress';
+      document.getElementById('licenseTypeBadge').className = 'badge badge-gold';
+      document.getElementById('licenseTypeBadge').textContent = 'VERIFYING';
+      
+      document.getElementById('pendingStatusTitle').textContent = 'Verification in Progress';
+      document.getElementById('pendingStatusLine').innerHTML = `
+          <div style="text-align:center; padding:15px; border:1px solid var(--teal); border-radius:8px;">
+              <p style="color:var(--teal);">Your payment is being verified by an officer.</p>
+              <p style="font-size:0.75rem; margin-top:5px;">Check back in 24-48 hours.</p>
+          </div>
+      `;
+      return;
+  }
+  
+  else if (stage === 'LEARNER_FEE_PENDING') { 
+      // Fixes the "My License" header
+      document.getElementById('licenseCardTitle').textContent = 'Action Required';
+      document.getElementById('licenseTypeBadge').className = 'badge badge-red';
+      document.getElementById('licenseTypeBadge').textContent = 'PAYMENT REJECTED';
+      
+      if (pdView) {
+          pdView.style.display = 'block';
+          if(document.getElementById('pendingStatusTitle')) document.getElementById('pendingStatusTitle').style.display = 'none';
+
+          // Calculates the challan number
+          const challanNo = app.activeChallanNo || `CHL-${new Date().getFullYear()}-APP-${app.applicationId}`;
+
+          // Draws the beautiful red box WITH the Challan Number
+          document.getElementById('pendingStatusLine').innerHTML = `
+              <div style="border: 1px solid #ff4d4d; padding: 20px; border-radius: 12px; text-align: center; background: rgba(255,77,77,0.05);">
+                  <div style="font-size:2.5rem; margin-bottom:10px;">❌</div>
+                  <h4 style="color:#ff4d4d; margin-bottom:10px;">Learner Fee Receipt Rejected</h4>
+                  
+                  <div style="background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; margin-bottom: 20px; display: inline-block; min-width: 250px; border: 1px solid rgba(255,255,255,0.1);">
+                      <div style="font-size: 0.7rem; color: var(--muted); text-transform: uppercase;">Pay against Challan No.</div>
+                      <div style="font-size: 1.3rem; font-weight: bold; color: var(--gold); font-family: monospace; letter-spacing: 2px;">
+                          ${challanNo}
+                      </div>
+                  </div>
+                  <br>
+                  
+                  <button class="btn btn-primary" style="width:100%" onclick="openModal('payModal')">Submit New Payment Receipt</button>
+              </div>
+          `;
+      }
+      return;
+  }
+
+  // 🚨 ─── NEW: FINAL LICENSE PAYMENT PENDING ───
+  // ─── FINAL LICENSE FEE STAGES (Initial, Verifying, & Rejected) ───
+  else if (stage === 'LICENSE_PAYMENT_PENDING' || stage === 'LICENSE_FEE_PENDING' || stage === 'FINAL_PAYMENT_VERIFICATION') {
+
+      // 1. Determine the exact state intelligently
+      const isRejected = app.applicationStatus === 'REJECTED';
+      const isVerifying = stage === 'FINAL_PAYMENT_VERIFICATION';
+
+      // 2. Set Header Status based on state
+      document.getElementById('licenseCardTitle').textContent = isVerifying ? 'Final Payment Sent' : 'Final Step: License Fee';
+      document.getElementById('licenseTypeBadge').className = isRejected ? 'badge badge-red' : (isVerifying ? 'badge badge-gold' : 'badge badge-teal');
+      document.getElementById('licenseTypeBadge').textContent = isVerifying ? 'VERIFYING' : (isRejected ? 'PAYMENT REJECTED' : 'PAYMENT DUE');
+
+      if (pdView) {
+          pdView.style.display = 'block';
+          if(document.getElementById('pendingStatusTitle')) document.getElementById('pendingStatusTitle').style.display = 'none';
+
+          // Force Challan calculation so it never disappears
+          const challanNo = app.activeChallanNo || `CHL-${new Date().getFullYear()}-LIC-${app.applicationId}`;
+
+          document.getElementById('pendingStatusLine').innerHTML = `
+              <div style="border: ${isRejected ? '1px solid #ff4d4d' : (isVerifying ? '1px solid var(--gold)' : '2px dashed var(--teal)')}; 
+                          padding: 20px; border-radius: 12px; text-align: center; 
+                          background: ${isRejected ? 'rgba(255,77,77,0.05)' : (isVerifying ? 'rgba(255, 193, 7, 0.05)' : 'rgba(0,212,170,0.05)')};">
+                  
+                  ${!isVerifying && !isRejected ? '<div style="font-size:2.5rem; margin-bottom:10px;">🎉</div>' : ''}
+                  ${isRejected ? '<div style="font-size:2.5rem; margin-bottom:10px;">❌</div>' : ''}
+
+                  <h3 style="color:${isRejected ? '#ff4d4d' : 'var(--white)'}; margin-bottom:10px;">
+                      ${isVerifying ? 'Final Fee Verification in Progress' : 
+                        isRejected ? 'License Fee Receipt Rejected' : 'Practical Test Passed!'}
+                  </h3>
+                  
+                  <p style="color:var(--muted); font-size:0.85rem; margin-bottom:15px;">
+                      ${isRejected ? `<strong>Reason:</strong> ${app.rejectionReason || 'Invalid or blurry receipt.'}` : 
+                        isVerifying ? 'Your final payment is being verified by an officer. This usually takes 24-48 hours.' : 
+                        'Please pay the final issuance fee to generate your permanent driving license.'}
+                  </p>
+                  
+                  <div style="background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; margin-bottom: 12px; display: inline-block; min-width: 250px; border: 1px solid rgba(255,255,255,0.1);">
+                      <div style="font-size: 0.7rem; color: var(--muted); text-transform: uppercase;">Pay against Challan No.</div>
+                      <div style="font-size: 1.3rem; font-weight: bold; color: var(--gold); font-family: monospace; letter-spacing: 2px;">
+                          ${challanNo}
+                      </div>
+                  </div>
+
+                  ${!isVerifying && !isRejected ? `
+                  <p style="margin-bottom: 16px; color: var(--white); font-size: 0.9rem;">
+                      Permanent License Fee: <strong style="color:var(--teal);">Rs. 2500</strong>
+                  </p>` : ''}
+                  
+                  ${!isVerifying ? `
+                  <button class="btn ${isRejected ? 'btn-primary' : 'btn-success'}" style="width:100%; font-size:1.05rem;" onclick="openModal('payModal')">
+                      ${isRejected ? 'Submit New Payment Receipt' : 'Pay via JazzCash / EasyPaisa / Bank'}
+                  </button>` : ''}
+              </div>
+          `;
+      }
+      return;
+  }
+
+  // 🚨 ─── NEW: DEMO CARD: LICENSE GENERATION PENDING ───
+  // 🚨 ─── NEW: DEMO CARD: LICENSE GENERATION PENDING ───
+  else if (stage === 'LICENSE_GENERATION_PENDING') {
+      document.getElementById('licenseCardTitle').textContent = 'Finalize Your License';
+      document.getElementById('licenseTypeBadge').className = 'badge badge-teal';
+      document.getElementById('licenseTypeBadge').textContent = 'READY TO GENERATE';
+
+      if (pdView) {
+          pdView.style.display = 'block';
+          
+          // 🚨 FIX 1: Hide the hourglass icon and the title so the card looks clean
+          if(document.getElementById('pendingStatusTitle')) document.getElementById('pendingStatusTitle').style.display = 'none';
+          if(document.getElementById('pendingStatusIcon')) document.getElementById('pendingStatusIcon').style.display = 'none';
+
+          // 🚨 FIX 2: Safely grab the nested user data so it never says "undefined"
+          const safeUser = app.applicant?.user || currentUser || {};
+          const safeName = safeUser.fullNameEn || 'Verified Applicant';
+          const safeCnic = safeUser.cnic || '—';
+
+          document.getElementById('pendingStatusLine').innerHTML = `
+              <div style="border: 1px solid var(--teal); padding: 20px; border-radius: var(--r); background: rgba(0,212,170,0.05);">
+                  <h4 style="color:var(--white); margin-bottom: 15px; text-align:center;">Demo License Card Preview</h4>
+                  
+                  <div style="background: linear-gradient(135deg, var(--navy-3), var(--navy-4)); padding: 15px; border-radius: 12px; border: 1px solid var(--border); text-align:left; margin-bottom: 20px;">
+                      <div style="color: var(--teal); font-size: 0.7rem; font-weight:bold; letter-spacing:1px; margin-bottom:10px;">PUNJAB DRIVING LICENSE</div>
+                      
+                      <div style="font-size: 1.1rem; color: var(--white); font-weight:bold;">${safeName}</div>
+                      <div style="font-size: 0.8rem; color: var(--muted); margin-bottom: 10px;">CNIC: ${safeCnic}</div>
+                      
+                      <div style="display:flex; gap:15px; font-size:0.8rem; color:var(--off-white);">
+                          <div><strong>Category:</strong> ${app.licenseCategory || '—'}</div>
+                          <div><strong>Blood Group:</strong> B+</div>
+                      </div>
+                  </div>
+
+                  <p style="color: var(--muted); font-size: 0.85rem; text-align:center; margin-bottom: 15px;">
+                      Please review your details. Once you click Create, it will be sent for final Officer validation.
+                  </p>
+                  <button class="btn btn-primary" style="width:100%; font-size:1.05rem;" onclick="requestFinalLicense(${app.applicationId})">
+                      ✨ Create My License
+                  </button>
+              </div>
+          `;
+      }
+      return;
+  }
+
+  // 🚨 ─── NEW: WAITING FOR OFFICER VALIDATION ───
+  else if (stage === 'FINAL_REVIEW') {
+      document.getElementById('licenseCardTitle').textContent = 'License Generation';
+      document.getElementById('licenseTypeBadge').className = 'badge badge-gold';
+      document.getElementById('licenseTypeBadge').textContent = 'OFFICER VALIDATION';
+
+      if (pdView) {
+          pdView.style.display = 'block';
+          if(document.getElementById('pendingStatusTitle')) {
+              document.getElementById('pendingStatusTitle').style.display = 'block';
+              document.getElementById('pendingStatusTitle').textContent = 'Final Officer Validation';
+          }
+          document.getElementById('pendingStatusLine').innerHTML = `
+              <div style="text-align:center; padding:15px; border:1px solid var(--gold); border-radius:8px; background: rgba(255, 193, 7, 0.05);">
+                  <p style="color:var(--gold); font-weight:bold;">Your license is being cryptographically signed and validated.</p>
+                  <p style="font-size:0.85rem; margin-top:5px; color:var(--white);">This usually takes a few hours. Check back soon!</p>
+              </div>
+          `;
+      }
+      return;
+  }
+
+  // 3. ─── REALISTIC PUNJAB PERMANENT LICENSE VIEW ───
+  else if (stage === 'LICENSE_READY' || stage === 'COMPLETED' || app.applicationStatus === 'APPROVED') {
+    document.getElementById('licenseCardTitle').textContent = 'My Driving License';
+    document.getElementById('licenseTypeBadge').className = 'badge badge-teal';
+    document.getElementById('licenseTypeBadge').textContent = 'PERMANENT';
+    
+    if (pdView) {
+        pdView.style.display = 'block';
+        const finalNum = app.licenseNumber || ('PB-' + new Date().getFullYear() + '-' + app.applicationId);
+        
+        const safeUser = app.applicant?.user || currentUser || {};
+        const safeName = safeUser.fullNameEn || 'Verified Applicant';
+        const safeCnic = safeUser.cnic || '—';
+        const safeDob = safeUser.dob ? fmt.date(safeUser.dob) : '01-Jan-2000';
+        const photoUrl = currentAppId ? `/api/applicant/documents/photo?applicationId=${currentAppId}` : '';
+
+        const issueDate = fmt.date(new Date());
+        const expDate = fmt.date(new Date(new Date().setFullYear(new Date().getFullYear() + 5)));
+
+        const qrData = encodeURIComponent(`PUNJAB DLMS | ${safeName} | CNIC:${safeCnic} | DL:${finalNum} | EXP:${expDate}`);
+
+        if(document.getElementById('pendingStatusTitle')) document.getElementById('pendingStatusTitle').style.display = 'none'; 
+        if(document.getElementById('pendingStatusIcon')) document.getElementById('pendingStatusIcon').style.display = 'none'; 
+        
+        document.getElementById('pendingStatusLine').innerHTML = `
+            <div id="printableLicenseCard">
+                <div class="punjab-license" style="padding: 0; background: #e0f8e9; color: #0f172a; border-radius: 12px; border: 2px solid #047857; position: relative; overflow: hidden; width: 100%; max-width: 480px; margin: 0 auto 20px auto; box-shadow: 0 10px 25px rgba(4,120,87,0.2);">
+                    
+                    <div style="background: #047857; color: white; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center;">
+                        <div style="font-size: 1.5rem; font-weight: 900;">PK</div>
+                        <div style="text-align: center; flex: 1;">
+                            <div style="font-size: 0.7rem; font-weight: 800; letter-spacing: 1.5px; color: #a7f3d0;">GOVERNMENT OF THE PUNJAB</div>
+                            <div style="font-size: 1.25rem; font-weight: 900; letter-spacing: 1px;">DRIVING LICENSE</div>
+                        </div>
+                        <div>
+                            <img src="https://flagcdn.com/w80/pk.png" style="height:30px; border-radius:4px; border: 1px solid rgba(255,255,255,0.3);" alt="PK Flag">
+                        </div>
+                    </div>
+                    
+                    <div style="padding: 20px; position: relative; text-align: center; background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 20px 20px;">
+                        
+                        <div style="position: absolute; top: 20px; left: 20px; width: 85px; height: 110px; border: 2px solid #047857; background: white; border-radius: 6px; overflow: hidden; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+                            <img src="${photoUrl}" 
+                                 onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/Flag_of_Punjab%2C_Pakistan.svg/120px-Flag_of_Punjab%2C_Pakistan.svg.png'; this.style.opacity='0.2'; this.style.objectFit='contain';" 
+                                 style="width: 100%; height: 100%; object-fit: cover;" alt="Applicant">
+                        </div>
+                        
+                        <div style="padding-left: 85px;">
+                            <div style="font-size: 0.65rem; color: #047857; font-weight: 800; letter-spacing: 1px;">NAME</div>
+                            <div style="font-size: 1.3rem; font-weight: 900; color: #0f172a; text-transform: uppercase; margin-bottom: 12px;">${safeName}</div>
+
+                            <div style="font-size: 0.65rem; color: #047857; font-weight: 800; letter-spacing: 1px;">CNIC NUMBER</div>
+                            <div style="font-size: 1.15rem; font-weight: 800; color: #0f172a; font-family: monospace; margin-bottom: 20px;">${safeCnic}</div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 5px; padding-left: 85px;">
+                            <div>
+                                <div style="font-size: 0.65rem; color: #047857; font-weight: 800;">LICENSE NO.</div>
+                                <div style="font-size: 0.95rem; font-weight: 800; color: #0f172a;">${finalNum}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.65rem; color: #047857; font-weight: 800;">D.O.B</div>
+                                <div style="font-size: 0.95rem; font-weight: 800; color: #0f172a;">${safeDob}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.65rem; color: #047857; font-weight: 800;">ISSUE DATE</div>
+                                <div style="font-size: 0.95rem; font-weight: 800; color: #0f172a;">${issueDate}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.65rem; color: #047857; font-weight: 800;">VALID UPTO</div>
+                                <div style="font-size: 0.95rem; font-weight: 900; color: #dc2626;">${expDate}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: #0f172a; color: white; padding: 6px 15px; display: flex; justify-content: space-between; align-items: center;">
+                        <div style="font-size: 0.8rem;"><strong>Cat:</strong> ${app.licenseCategory} &nbsp;|&nbsp; <strong>Blood Group:</strong> B+</div>
+                        <div style="font-size: 0.7rem; font-family: monospace; letter-spacing: 1px;">DLMS-VERIFIED</div>
+                    </div>
+                </div>
+
+                <div class="punjab-license" style="padding: 15px; background: #e0f8e9; border: 2px solid #047857; border-radius: 12px; display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 480px; margin: 0 auto; box-shadow: 0 10px 25px rgba(4,120,87,0.2);">
+                    <div style="height: 40px; background: #334155; width: calc(100% + 30px); margin: -15px -15px 0 -15px;"></div>
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 10px;">
+                        <div style="font-size: 0.75rem; color: #475569;">
+                            <strong>Authorized Signature:</strong><br>
+                            <div style="font-family: 'Brush Script MT', cursive; font-size: 2.2rem; color: #0f172a; margin: 5px 0; transform: rotate(-3deg);">M. Officer</div>
+                            <span style="font-size: 0.65rem;">Licensing Authority, Govt of Punjab</span>
+                        </div>
+                        <div style="background: white; padding: 4px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=70x70&data=${qrData}" style="display:block;">
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 15px; font-size: 0.65rem; color: #64748b; text-align: center; border-top: 1px solid #cbd5e1; padding-top: 8px;">
+                        If found, please drop in any nearest post box or return to Licensing Authority, Traffic Police Punjab.
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn btn-primary" style="width:100%; max-width: 480px; margin: 20px auto 0 auto; display: block; font-size:1.05rem;" onclick="printLicense()">
+                🖨️ Download / Print Physical License
+            </button>
+        `;
+    }
+    return;
+  }
+  // 4. ─── APPLICATION PENDING VIEW ───
+  else if (stage === 'REVIEW' || app.applicationStatus === 'UNDER_REVIEW' || app.applicationStatus === 'PENDING') {
+    document.getElementById('licenseCardTitle').textContent = 'Application Status';
+    document.getElementById('licenseTypeBadge').className = 'badge badge-amber';
+    document.getElementById('licenseTypeBadge').textContent = 'PENDING';
+    if (pdView) pdView.style.display = 'block';
+    
+    if(document.getElementById('pendingStatusTitle')) document.getElementById('pendingStatusTitle').style.display = 'block';
+    document.getElementById('pendingStatusLine').innerHTML = `<span class="badge badge-gold">Stage: ${stage}</span>`;
+  } 
+
+  // 5. ─── LEARNER PERMIT ACTIVE VIEW (REALISTIC DESIGN) ───
+  else {
+    document.getElementById('licenseCardTitle').textContent = 'Learner Permit';
+    document.getElementById('licenseTypeBadge').className = 'badge badge-gold';
+    document.getElementById('licenseTypeBadge').textContent = 'LEARNER';
+    if (lpView) lpView.style.display = 'block';
+
+    const safeUser = app.applicant?.user || currentUser || {};
+    const safeName = safeUser.fullNameEn || 'Pending Applicant';
+    const safeCnic = safeUser.cnic || '—';
+
+    // Calculate District-based Permit Number
+    const districtCode = (safeUser.district || 'LHR').substring(0, 3).toUpperCase();
+    const year = new Date().getFullYear().toString().substring(2);
+    const finalPermitNo = app.learnerPermitNo || `${districtCode}-${app.applicationId}/${year}`;
+
+    // Handle Expiry gracefully
+    let issueDateObj = app.issueDate ? new Date(app.issueDate) : (app.submissionDate ? new Date(app.submissionDate) : new Date());
+    let expiryDateStr = app.learnerExpiryDate ? fmt.date(app.learnerExpiryDate) : '—';
+    if (!app.learnerExpiryDate) {
+       let calcExp = new Date(issueDateObj);
+       calcExp.setMonth(calcExp.getMonth() + 6);
+       expiryDateStr = fmt.date(calcExp);
+    }
+
+    const qrData = encodeURIComponent(`DLMS LEARNER | ${safeName} | CNIC:${safeCnic} | Permit:${finalPermitNo}`);
+
+    // OVERWRITE HTML with Realistic Learner Card (Front Only, No Photo)
+    lpView.innerHTML = `
+      <div id="printableLearnerCard">
+          <div class="punjab-license" style="padding: 0; box-shadow: 0 10px 25px rgba(245, 158, 11, 0.15); border-color: #f59e0b;">
+              
+              <div style="background: #d97706; color: white; padding: 10px 15px; display: flex; align-items: center; gap: 10px;">
+                  <div style="font-size: 2rem;">🇵🇰</div>
+                  <div style="flex: 1;">
+                      <div style="font-size: 0.8rem; font-weight: bold; letter-spacing: 1px; color: #fef3c7;">GOVERNMENT OF THE PUNJAB</div>
+                      <div style="font-size: 1.1rem; font-weight: 800; letter-spacing: 1px;">LEARNER PERMIT</div>
+                  </div>
+                  <div style="text-align: right;">
+                      <img src="https://flagcdn.com/w80/pk.png" style="height:35px; border-radius:3px;" alt="PK Flag">
+                  </div>
+              </div>
+              
+              <div style="padding: 20px; display: flex; justify-content: space-between; align-items: center; gap: 15px;">
+                  
+                  <div style="flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 12px 15px;">
+                      <div style="grid-column: span 2;">
+                          <div style="font-size: 0.65rem; color: #d97706; font-weight: bold;">NAME</div>
+                          <div style="font-size: 1.3rem; font-weight: 900; color: #0f172a; text-transform: uppercase;">${safeName}</div>
+                      </div>
+                      
+                      <div style="grid-column: span 2;">
+                          <div style="font-size: 0.65rem; color: #d97706; font-weight: bold;">CNIC NUMBER</div>
+                          <div style="font-size: 1.05rem; font-weight: 700; color: #0f172a;">${safeCnic}</div>
+                      </div>
+
+                      <div>
+                          <div style="font-size: 0.65rem; color: #d97706; font-weight: bold;">PERMIT NO.</div>
+                          <div style="font-size: 0.95rem; font-weight: 800; color: #0f172a;">${finalPermitNo}</div>
+                      </div>
+                      
+                      <div>
+                          <div style="font-size: 0.65rem; color: #d97706; font-weight: bold;">CATEGORY</div>
+                          <div style="font-size: 0.95rem; font-weight: 800; color: #0f172a;">${app.licenseCategory || '—'}</div>
+                      </div>
+
+                      <div>
+                          <div style="font-size: 0.65rem; color: #d97706; font-weight: bold;">ISSUE DATE</div>
+                          <div style="font-size: 0.95rem; font-weight: 700; color: #0f172a;">${fmt.date(issueDateObj)}</div>
+                      </div>
+
+                      <div>
+                          <div style="font-size: 0.65rem; color: #d97706; font-weight: bold;">VALID UPTO</div>
+                          <div style="font-size: 0.95rem; font-weight: 900; color: #dc2626;">${expiryDateStr}</div>
+                      </div>
+                  </div>
+                  
+                  <div style="background: white; padding: 6px; border-radius: 8px; border: 1px solid #cbd5e1; flex-shrink: 0;">
+                      <img src="https://api.qrserver.com/v1/create-qr-code/?size=95x95&data=${qrData}" style="display:block;" alt="QR">
+                  </div>
+              </div>
+          </div>
+
+          <div class="lp-expiry-bar" style="margin-top:16px; background: rgba(255,255,255,0.03); padding: 15px; border-radius: 12px; border: 1px solid var(--border);">
+              <div class="eb-label" style="display:flex; justify-content:space-between; margin-bottom:10px; font-size:0.9rem;">
+                  <span style="color:var(--white);">Learner Period Status</span>
+                  <span id="lp-days-left-inner" style="font-weight:bold;">—</span>
+              </div>
+              <div class="progress-bar" style="background:rgba(255,255,255,0.1); height:8px; border-radius:4px; overflow:hidden;">
+                  <div class="progress-fill gold" id="lp-validity-bar-inner" style="height:100%; width:0%; transition: width 0.8s ease-out;"></div>
+              </div>
+          </div>
+      </div>
+      
+      <button class="btn btn-outline" style="width:100%; margin-top:15px; display:flex; justify-content:center; align-items:center; gap:10px; border-color: var(--teal); color: var(--teal);" onclick="printLearnerPermit()">
+          🖨️ Download / Print Learner Permit
+      </button>
+    `;
+
+    // Smart Progress Bar Logic
+    // Smart Progress Bar Logic
+const pastMedical = ['THEORY_PENDING', 'TESTS_PENDING', 'PRACTICAL_PENDING', 'PAYMENT', 'LICENSE_PAYMENT_PENDING', 'LICENSE_FEE_PENDING', 'LICENSE_GENERATION_PENDING', 'FINAL_REVIEW', 'FINAL_PAYMENT_VERIFICATION', 'REVIEW', 'LICENSE_READY', 'COMPLETED'].includes(stage);
+    
+    // We must use setTimeout to allow the DOM to render before animating the bar
+    setTimeout(() => {
+        const lpDaysLeftEl = document.getElementById('lp-days-left-inner');
+        const bar = document.getElementById('lp-validity-bar-inner');
+
+        if (pastMedical) {
+            if (lpDaysLeftEl) { lpDaysLeftEl.textContent = "Test Phase Unlocked"; lpDaysLeftEl.style.color = "var(--teal)"; }
+            if (bar) { bar.style.width = '100%'; bar.style.background = 'var(--teal)'; }
+        } else {
+            const diffDays = Math.floor(Math.abs(Date.now() - issueDateObj) / 86400000);
+            const pct = Math.min(100, Math.round((diffDays / 41) * 100));
+
+            if (diffDays >= 41) {
+                if (lpDaysLeftEl) { lpDaysLeftEl.textContent = "41+ Days (Eligible for Test!)"; lpDaysLeftEl.style.color = "var(--teal)"; }
+                if (bar) { bar.style.width = '100%'; bar.style.background = 'var(--teal)'; }
+            } else {
+                if (lpDaysLeftEl) { lpDaysLeftEl.textContent = diffDays + ' / 41 Days Completed'; lpDaysLeftEl.style.color = "var(--gold)"; }
+                if (bar) { bar.style.width = pct + '%'; bar.style.background = 'var(--gold)'; }
+            }
+        }
+    }, 50);
+  }
+}
+
+async function handleRenewal(appId) {
+	  if (!confirm("Your existing application will be reset for renewal. Proceed to pay Rs. 300?")) return;
+	  
+	  Loader.show('Initiating renewal...');
+	  try {
+	    const res = await API.put(`/api/applications/${appId}/renew-learner`);
+	    if (res.success) {
+	      Toast.success('Renewal requested. Please pay the fee.');
+	      await loadAll(); // Refresh dashboard to show the payment lock
+	    }
+	  } catch (e) {
+	    Toast.error('Renewal failed: ' + e.message);
+	  } finally {
+	    Loader.hide();
+	  }
+	}
+
+/* ── ACTIVITY FEED (Smart Dynamic History) ── */
+function renderActivity(app) {
+  const activities = [];
+
+  // 1. Always show account creation at the bottom
+  activities.push({ text:'Account registered successfully', time: 'Earlier', color: 'teal' });
+
+  // 2. Submission Date
+  if (app.submissionDate) {
+      activities.unshift({ text:`Learner permit application <strong>#${app.applicationId}</strong> submitted`, time: fmt.date(app.submissionDate), color: 'teal' });
+  }
+
+  // 3. Detect if Payment was submitted
+  if (app.currentStage !== 'LEARNER_PAYMENT_PENDING' && app.currentStage !== 'LEARNER_PENDING') {
+      activities.unshift({ text: `Learner Fee payment submitted for verification`, time: 'Recently', color: 'gold' });
+  }
+
+  // 4. Detect if Learner Issued
+  const pastLearner = ['LEARNER_ISSUED', 'DOCS', 'MEDICAL', 'MEDICAL_PENDING', 'THEORY_PENDING', 'TESTS_PENDING', 'PRACTICAL_PENDING', 'PAYMENT', 'LICENSE_PAYMENT_PENDING', 'LICENSE_FEE_PENDING', 'LICENSE_GENERATION_PENDING', 'FINAL_REVIEW', 'FINAL_PAYMENT_VERIFICATION', 'REVIEW', 'LICENSE_READY', 'COMPLETED'].includes(app.currentStage);
+  if (pastLearner) {
+      activities.unshift({ text: `Payment verified & <strong>Learner Permit Issued</strong>`, time: app.issueDate ? fmt.date(app.issueDate) : 'Recently', color: 'teal' });
+  }
+
+  // 5. Detect if Documents Passed
+  const pastDocs = ['THEORY_PENDING', 'TESTS_PENDING', 'PRACTICAL_PENDING', 'PAYMENT', 'LICENSE_PAYMENT_PENDING', 'LICENSE_FEE_PENDING', 'LICENSE_GENERATION_PENDING', 'FINAL_REVIEW', 'FINAL_PAYMENT_VERIFICATION', 'REVIEW', 'LICENSE_READY', 'COMPLETED'].includes(app.currentStage);
+  if (pastDocs) {
+      activities.unshift({ text: `Document verification completed successfully`, time: 'Recently', color: 'teal' });
+  }
+
+  // 6. Detect if Tests Passed
+  const pastTests = ['PAYMENT', 'LICENSE_PAYMENT_PENDING', 'LICENSE_FEE_PENDING', 'LICENSE_GENERATION_PENDING', 'FINAL_REVIEW', 'FINAL_PAYMENT_VERIFICATION', 'REVIEW', 'LICENSE_READY', 'COMPLETED'].includes(app.currentStage);
+  if (pastTests) {
+      activities.unshift({ text: `All Tests (Theory & Practical) Passed!`, time: 'Recently', color: 'teal' });
+  }
+
+  // 7. Detect Final Issuance
+  const fullyComplete = ['LICENSE_READY', 'COMPLETED', 'APPROVED'].includes(app.currentStage);
+  if (fullyComplete) {
+      activities.unshift({ text: `<strong>Permanent License Officially Issued</strong>`, time: 'Recently', color: 'teal' });
+  }
+
+  // 8. Handle Rejections (puts it at the very top)
+  if (app.applicationStatus === 'REJECTED') {
+      activities.unshift({ text: `Action <strong>Rejected</strong> by Officer. Please check requirements.`, time: 'Just Now', color: 'red' });
+  }
+
+  // Render to the DOM
+  document.getElementById('activityFeed').innerHTML = activities.length
+    ? activities.map(a => `
+        <div class="activity-item" style="animation: fadeIn 0.4s ease;">
+          <div class="act-dot" style="background: var(--${a.color || 'teal'});"></div>
+          <div><div class="act-text">${a.text}</div><div class="act-time">${a.time}</div></div>
+        </div>`).join('')
+    : '<p style="text-align:center;padding:16px;color:var(--muted);font-size:.82rem;">No activity yet.</p>';
+}
+
+/* ══════════════════════════════════════════
+SUBMIT LEARNER PERMIT APPLICATION
+══════════════════════════════════════════ */
+async function submitLearnerApplication() {
+	const category = document.getElementById('learnerCategory').value;
+	
+	if (!category) { 
+	   Toast.warning('Please select a license category.'); 
+	   return; 
+	}
+	
+	const btn = document.getElementById('submitLearnerBtn');
+	btn.disabled     = true;
+	btn.textContent  = 'Submitting...';
+	
+	try {
+	 // Send only the category to our updated Spring Boot Controller
+	 const res = await API.post('/api/applications/apply', {
+	   licenseCategory: category
+	 });
+	
+	 if (res?.success) {
+	   Toast.success('Learner permit application submitted! You will be notified once approved.');
+	   closeModal('learnerModal');
+	   await loadAll();   /* Reload everything to reflect new state */
+	 } else {
+	   Toast.error(res?.message || 'Failed to submit application. Please try again.');
+	 }
+	} catch(e) {
+	 Toast.error('Could not connect to server. Please check your connection.');
+	 console.error(e);
+	} finally {
+	 btn.disabled    = false;
+	 btn.textContent = 'Submit Learner Permit Application →';
+	}
+}
+
+/* ══════════════════════════════════════════
+SUBMIT RENEWAL APPLICATION
+══════════════════════════════════════════ */
+async function submitRenewalApplication() {
+	const oldLicense = document.getElementById('oldLicenseNumber').value.trim();
+	const category = document.getElementById('renewalCategory').value;
+	
+	if (!oldLicense || !category) { 
+	   Toast.warning('Please enter your old license number and select a category.'); 
+	   return; 
+	}
+	
+	const btn = document.getElementById('submitRenewalBtn');
+	btn.disabled     = true;
+	btn.textContent  = 'Submitting...';
+	
+	try {
+	 const res = await API.post('/api/applications/renew', {
+	   oldLicenseNumber: oldLicense,
+    licenseCategory: category
+	 });
+	
+	 if (res?.success) {
+	   Toast.success('Renewal application initiated! Please proceed to document upload.');
+	   closeModal('renewalModal');
+	   await loadAll();   
+	 } else {
+	   Toast.error(res?.message || 'Failed to submit renewal application.');
+	 }
+	} catch(e) {
+	 Toast.error('Could not connect to server.');
+	 console.error(e);
+	} finally {
+	 btn.disabled    = false;
+	 btn.textContent = 'Submit Renewal Application →';
+	}
+}
+
+/* ══════════════════════════════════════════
+   NOTIFICATIONS (fully dynamic)
+   ══════════════════════════════════════════ */
+async function loadNotifications() {
+  try {
+    const res    = await API.get('/api/applicant/notifications');
+    const notifs = res?.data || [];
+    renderNotifications(notifs);
+  } catch {
+    renderNotifications([]);
+  }
+}
+
+function renderNotifications(notifs) {
+	  const iconMap  = { SUCCESS:'✅', WARNING:'⚠️', INFO:'ℹ️', ERROR:'❌', TEST_RESULT:'📝',
+	                     LICENSE_APPROVED:'🪪', LICENSE_ISSUED:'🪪', VIOLATION_RECORDED:'🚔',
+	                     APPLICATION_SUBMITTED:'📋' };
+	  const colorMap = { SUCCESS:'teal', WARNING:'gold', INFO:'teal', ERROR:'red',
+	                     TEST_RESULT:'teal', LICENSE_APPROVED:'teal', LICENSE_ISSUED:'teal' };
+
+	  // 1. Separate Unread from All
+	  const unreadNotifs = notifs.filter(n => !n.isRead);
+	  const unread = unreadNotifs.length;
+
+	  document.getElementById('notifCount').textContent = unread;
+	  document.getElementById('notifDot').style.display = unread > 0 ? 'block' : 'none';
+
+	  const notifStatEl = document.getElementById('statNotifs');
+	  if (notifStatEl) notifStatEl.textContent = unread;
+	  const notifStatEmpty = document.getElementById('statNotifsEmpty');
+	  if (notifStatEmpty) notifStatEmpty.textContent = unread;
+
+	  // 2. DASHBOARD WIDGET: Only show UNREAD notifications
+	  const dashboardHtml = unreadNotifs.length
+	    ? unreadNotifs.map(n => `
+	        <div class="notif-item" onclick="markRead(${n.notificationId})" style="cursor:pointer;">
+	          <div class="notif-icon stat-icon ${colorMap[n.type] || 'teal'}">
+	            ${iconMap[n.type] || '🔔'}
+	          </div>
+	          <div class="notif-text">
+	            <div class="notif-title">${escHtml(n.subject || 'Notification')}</div>
+	            <div class="notif-body">${escHtml(n.messageBody || '')}</div>
+	            <div class="notif-time">${fmt.dateTime(n.sentAt)}</div>
+	          </div>
+	        </div>`).join('')
+	    : '<p style="text-align:center;padding:30px;color:var(--muted);font-size:.85rem;">No new notifications.</p>';
+
+	  // 3. MAIN NOTIFICATIONS TAB: Show ALL notifications (History)
+	  const allHtml = notifs.length
+	    ? notifs.map(n => `
+	        <div class="notif-item ${n.isRead ? '' : 'notif-unread'}" onclick="markRead(${n.notificationId})" style="cursor:pointer;">
+	          <div class="notif-icon stat-icon ${colorMap[n.type] || 'teal'}">
+	            ${iconMap[n.type] || '🔔'}
+	          </div>
+	          <div class="notif-text">
+	            <div class="notif-title">${escHtml(n.subject || 'Notification')}</div>
+	            <div class="notif-body">${escHtml(n.messageBody || '')}</div>
+	            <div class="notif-time">${fmt.dateTime(n.sentAt)}</div>
+	          </div>
+	        </div>`).join('')
+	    : '<p style="text-align:center;padding:24px;color:var(--muted);">No notifications yet.</p>';
+
+	  // Inject into the HTML
+	  document.getElementById('notifList').innerHTML    = dashboardHtml; // Goes to the split-screen widget
+	  document.getElementById('allNotifList').innerHTML = allHtml;       // Goes to the full-page tab
+	}
+
+async function markRead(id) {
+	  try {
+	    await API.put(`/api/applicant/notifications/${id}/read`);
+	    // Refresh the data to instantly remove the red dot and update numbers
+	    await loadNotifications();
+	  } catch (e) {
+	    console.error(e);
+	  }
+}
+
+async function markAllRead() {
+	  try {
+	    // 1. Tell the backend we read them
+	    await API.put('/api/applicant/notifications/read-all');
+	    
+	    Toast.info('All notifications marked as read.');
+	    
+	    // 2. Refresh the data! This will automatically update the bell, 
+	    // the list, AND the dashboard stat cards all at once.
+	    await loadNotifications(); 
+	  } catch (e) {
+	    console.error(e);
+	    Toast.error('Could not connect to server.');
+	}
+}
+
+/* ══════════════════════════════════════════
+   DOCUMENTS (fully dynamic)
+   ══════════════════════════════════════════ */
+   async function loadDocuments() {
+	   if (!currentAppId) return;
+	   try {
+	     const res = await API.get(`/api/applicant/documents?applicationId=${currentAppId}`);
+	     
+	     let docs = [];
+	     if (Array.isArray(res)) {
+	         docs = res;
+	     } else if (res && Array.isArray(res.data)) {
+	         docs = res.data;
+	     }
+
+	     renderDocs(docs);
+
+	     const docsByType = {};
+	     docs.forEach(d => { docsByType[d.documentType] = d; });
+	     
+	     const isStage1Done = docsByType['CNIC_COPY']?.verificationStatus === 'VERIFIED' && 
+	                          docsByType['PHOTO']?.verificationStatus === 'VERIFIED';
+	                          
+	     const isStage2Done = docsByType['MEDICAL'] && ['VERIFIED', 'APPROVED'].includes(docsByType['MEDICAL'].verificationStatus);
+
+         // 🚨 THE FIX: Fast-Forward Logic for Renewals!
+         // If documents are already verified but the backend hasn't moved the stage forward yet...
+         if (isStage1Done && isStage2Done && (currentApp.currentStage === 'LEARNER_ISSUED' || currentApp.currentStage === 'MEDICAL_PENDING')) {
+             
+             // 1. Force the application to the Tests phase in the frontend
+             currentApp.currentStage = 'TESTS_PENDING'; 
+             
+             // 2. Re-run the visual locker so the Tests Tab unlocks instantly!
+             showApplicationState(currentApp); 
+             
+             await loadTests();
+             
+         }
+
+	   } catch (e) {
+	     console.error("Failed to load documents:", e);
+	     renderDocs([]);
+	   }
+	 }
+/* ══════════════════════════════════════════
+DOCUMENTS: 2-STAGE WORKFLOW LOGIC
+══════════════════════════════════════════ */
+let pendingUploadType = ''; // Remembers which document button was clicked
+
+function renderDocs(docs) {
+    const docsByType = {};
+    docs.forEach(d => { docsByType[d.documentType] = d; });
+
+    // 1. Evaluate Workflow Status
+    const cnic = docsByType['CNIC_COPY'];
+    const photo = docsByType['PHOTO'];
+    const medical = docsByType['MEDICAL'];
+
+    const isStage1Done = cnic && photo && 
+       ['VERIFIED', 'APPROVED'].includes(cnic.verificationStatus) && 
+       ['VERIFIED', 'APPROVED'].includes(photo.verificationStatus);
+       
+    const isStage2Done = medical && ['VERIFIED', 'APPROVED'].includes(medical.verificationStatus);
+
+    // 🚨 2. SUCCESS STATE: Check if the application has moved past the Document Phase entirely
+    // FIX: Added ALL test, payment, and rejection stages so this screen NEVER disappears once earned!
+    const pastDocsPhase = [
+        'THEORY_PENDING', 'TESTS_PENDING', 'PRACTICAL_PENDING', 'DRIVING_PENDING', 
+        'PAYMENT', 'LICENSE_PAYMENT_PENDING', 'LICENSE_FEE_PENDING', 
+        'LICENSE_GENERATION_PENDING', 'FINAL_REVIEW', 'FINAL_PAYMENT_VERIFICATION', 
+        'REVIEW', 'LICENSE_READY', 'COMPLETED'
+    ].includes(currentApp.currentStage);
+
+    if (pastDocsPhase || (isStage1Done && isStage2Done)) {
+        // OVERRIDE the screen with a beautiful Success message
+        document.getElementById('docsUnlocked').innerHTML = `
+            <div class="card" style="text-align:center; padding: 40px 20px; border-top: 4px solid var(--teal); animation: fadeIn 0.4s ease;">
+                <div style="font-size: 3.5rem; margin-bottom: 15px;">✅</div>
+                <h3 style="color: var(--white); margin-bottom: 10px; font-size: 1.4rem;">All Documents Verified</h3>
+                <p style="color: var(--muted); font-size: 0.95rem; margin-bottom: 25px; max-width: 450px; margin-left: auto; margin-right: auto; line-height: 1.6;">
+                    Your identity and medical fitness have been successfully verified by the licensing officer. You do not need to upload any further documents.
+                </p>
+                <button class="btn btn-primary btn-lg" onclick="showSection('tests', document.getElementById('nav-tests'))">
+                    Proceed to Tests Tab →
+                </button>
+            </div>
+        `;
+        
+        // Ensure the tests tab is completely unlocked
+        const testsNav = document.getElementById('nav-tests');
+        if (testsNav) {
+            testsNav.classList.remove('locked');
+            testsNav.title = "";
+        }
+        return; // 🛑 STOP EXECUTION! Do not draw the upload buttons below.
+    }
+
+    // 3. STANDARD UPLOAD VIEW (For missing, pending, or REJECTED documents)
+    const getDocHtml = (type, name, icon) => {
+        const d = docsByType[type] || { verificationStatus: 'NOT_UPLOADED' };
+        const isDone = ['VERIFIED', 'APPROVED'].includes(d.verificationStatus);
+        const isPending = d.verificationStatus === 'UNDER_REVIEW';
+        const isRejected = d.verificationStatus === 'REJECTED'; 
+        
+        let actionHtml = '';
+        let statusText = 'Awaiting upload';
+        let statusColor = 'var(--muted)';
+        
+        if (isDone) {
+            actionHtml = `<span class="badge badge-teal">✅ ${d.verificationStatus}</span>`;
+            statusText = 'Verified successfully';
+            statusColor = 'var(--teal)';
+        } else if (isPending) {
+            actionHtml = `<span class="badge badge-gold">⏳ UNDER REVIEW</span>`;
+            statusText = 'Waiting for officer';
+            statusColor = 'var(--gold)';
+        } else if (isRejected) {
+            // Draws a specific Red Re-Upload button if the officer rejected it!
+            actionHtml = `<button class="btn btn-primary btn-sm" onclick="triggerUpload('${type}')">Re-Upload File</button>`;
+            statusText = 'Rejected. Please upload a valid document.';
+            statusColor = 'var(--red)';
+        } else {
+            actionHtml = `<button class="btn btn-primary btn-sm" onclick="triggerUpload('${type}')">Upload File</button>`;
+        }
+
+        return `
+          <div class="doc-item" style="margin-bottom: 8px;">
+            <div class="doc-icon stat-icon ${isDone ? 'teal' : isPending ? 'gold' : isRejected ? 'red' : 'muted'}">${icon}</div>
+            <div class="doc-info">
+              <div class="doc-name">${name}</div>
+              <div class="doc-status" style="color: ${statusColor};">${statusText}</div>
+            </div>
+            <div class="doc-action">${actionHtml}</div>
+          </div>`;
+    };
+
+    // Render Stage 1 UI
+    const s1List = document.getElementById('stage1List');
+    if (s1List) {
+        s1List.innerHTML = 
+         getDocHtml('CNIC_COPY', 'CNIC Copy (Front & Back)', '🪪') + 
+         getDocHtml('PHOTO', 'Passport Size Photograph', '📷');
+    }
+
+    // Render Stage 2 UI
+    const s2List = document.getElementById('stage2List');
+    if (s2List) {
+        s2List.innerHTML = getDocHtml('MEDICAL', 'PMDC Medical Certificate', '🏥');
+    }
+
+    // 🚨 4. EVALUATE LOCKS VISUALLY
+    const s1Card = document.getElementById('stage1Card');
+    const s1Lock = document.getElementById('stage1Lock');
+    const s2Card = document.getElementById('stage2Card');
+    const s2Lock = document.getElementById('stage2Lock');
+    
+    if (isStage1Done) {
+       // Lock Stage 1 with Success Overlay
+       if (s1Lock) s1Lock.style.display = 'flex';
+       
+       // Unlock Stage 2
+       if (s2Card) s2Card.classList.remove('section-locked');
+       if (s2Lock) s2Lock.style.display = 'none';
+    } else {
+       // Keep Stage 1 unlocked
+       if (s1Lock) s1Lock.style.display = 'none';
+       
+       // Keep Stage 2 Locked
+       if (s2Card) s2Card.classList.add('section-locked');
+       if (s2Lock) s2Lock.style.display = 'flex';
+    }
+
+    // Lock Tests Tab until docs are verified (This only runs if docs are NOT fully verified)
+    const testsNav = document.getElementById('nav-tests');
+    if (testsNav) {
+       testsNav.classList.add('locked');
+       testsNav.title = "Locked: You must complete Document verification first.";
+    }
+}
+
+//Opens the hidden file picker for the specific document type
+function triggerUpload(docType) {
+ pendingUploadType = docType;
+ document.getElementById('globalFileInput').click();
+}
+
+//Handles the file selection and triggers the correct animation
+async function processSelectedFile(input) {
+ const file = input.files[0];
+ if (!file) return;
+
+ if (!currentAppId) { Toast.warning('No active application found.'); return; }
+
+ const fd = new FormData();
+ fd.append('file', file);
+ fd.append('documentType', pendingUploadType);
+ fd.append('applicationId', currentAppId);
+
+ try {
+     // ── STAGE 1: NADRA FAKE ANIMATION ──
+     if (pendingUploadType === 'CNIC_COPY' || pendingUploadType === 'PHOTO') {
+         const loadingBox = document.getElementById('nadraLoading');
+         const fillBar = document.getElementById('nadraFill');
+         const title = document.getElementById('nadraTitle');
+         
+         loadingBox.style.display = 'block';
+         fillBar.style.width = '0%';
+         
+         // Animation Sequence
+         title.textContent = "Uploading image...";
+         fillBar.style.width = '30%';
+         await new Promise(r => setTimeout(r, 1000));
+         
+         title.textContent = "Connecting to NADRA database...";
+         fillBar.style.width = '60%';
+         await new Promise(r => setTimeout(r, 1500));
+         
+         title.textContent = "Verifying biometric parameters...";
+         fillBar.style.width = '90%';
+         await new Promise(r => setTimeout(r, 1500));
+
+         // Upload to backend
+         await API.upload('/api/applicant/documents/upload', fd);
+         
+         title.textContent = "Verified Successfully!";
+         fillBar.style.width = '100%';
+         await new Promise(r => setTimeout(r, 800));
+         loadingBox.style.display = 'none';
+         
+         Swal.fire({
+             icon: 'success',
+             title: 'NADRA Verified',
+             text: `Your ${pendingUploadType === 'CNIC_COPY' ? 'CNIC' : 'Photo'} has been verified automatically.`,
+             timer: 2500,
+             showConfirmButton: false
+         }).then(() => {
+             window.location.reload(); 
+         });
+
+         // Instant Activity Feed Update
+         const docName = pendingUploadType === 'CNIC_COPY' ? 'CNIC' : 'Passport Photo';
+         const activityFeed = document.getElementById('activityFeed');
+         if (activityFeed) {
+             const newActivity = `
+                 <div class="activity-item" style="animation: fadeIn 0.5s ease;">
+                   <div class="act-dot"></div>
+                   <div><div class="act-text">NADRA verified <strong>${docName}</strong> automatically.</div><div class="act-time">Just now</div></div>
+                 </div>`;
+             if (activityFeed.innerHTML.includes('No recent activity')) {
+                 activityFeed.innerHTML = newActivity;
+             } else {
+                 activityFeed.insertAdjacentHTML('afterbegin', newActivity);
+             }
+         }
+     } 
+     // ── STAGE 2: MEDICAL UPLOAD (No NADRA) ──
+     else if (pendingUploadType === 'MEDICAL') {
+            Loader.show('Uploading Medical Certificate...');
+         
+         await API.upload('/api/applicant/documents/upload', fd);
+         Loader.hide();
+         
+         Swal.fire({
+             icon: 'info',
+             title: 'Sent for Review',
+             text: `Your document has been uploaded and sent to the Testing Officer. You will be notified once they review it.`,
+             confirmButtonText: 'Understood'
+         });
+
+         // Instant Activity Feed Update
+         const activityFeed = document.getElementById('activityFeed');
+         if (activityFeed) {
+             const newActivity = `
+                 <div class="activity-item" style="animation: fadeIn 0.5s ease;">
+                   <div class="act-dot" style="background: var(--gold);"></div>
+                   <div><div class="act-text">${pendingUploadType === 'MEDICAL' ? 'Medical Certificate' : 'Form B'} uploaded. <strong>Pending manual review.</strong></div><div class="act-time">Just now</div></div>
+                 </div>`;
+             activityFeed.insertAdjacentHTML('afterbegin', newActivity);
+         }
+     }
+
+     // Reset and Refresh
+     input.value = '';
+     pendingUploadType = '';
+     await loadDocuments(); // Reloads UI to unlock Stage 2 and Tests tab if ready
+     await loadNotifications();
+
+ } catch (e) {
+     Loader.hide();
+     document.getElementById('nadraLoading').style.display = 'none';
+     Toast.error('Upload failed. Please try again.');
+     console.error(e);
+     input.value = '';
+     pendingUploadType = '';
+ }
+}
+
+/* ══════════════════════════════════════════
+   TESTS (fully dynamic)
+   ══════════════════════════════════════════ */
+   async function loadTests() {
+	   if (!currentAppId) return;
+	   try {
+	     const res = await API.get(`/api/applicant/tests?applicationId=${currentAppId}`);
+	     
+	     // 🚨 FIX 1: Handle both raw arrays and .data responses
+	     const tests = Array.isArray(res) ? res : (res?.data || []);
+	     
+	     // Check if any driving test exists in the schedule table
+	     const hasDrivingSchedule = tests.some(t => t.testType === 'DRIVING' && t.status === 'SCHEDULED');
+	     
+	     // Only call this ONCE
+	     renderTests(tests, hasDrivingSchedule);
+	   } catch (e) {
+	     console.error("Failed to load tests:", e);
+	     renderTests([], false);
+	   }
+	 }
+
+// 🚨 CHANGE: Added hasDrivingSchedule as a parameter to the function
+function renderTests(tests, hasDrivingSchedule) {
+    const testsUnlockedDiv = document.getElementById('testsUnlocked');
+    const stage = currentApp.currentStage;
+    
+    // 🚨 FIX 1: Added ALL post-theory stages so it NEVER re-locks on payment rejection
+    // 🚨 FIX 1: Added THEORY_PENDING to unlock the test after medical approval
+    const isTheoryUnlocked = [
+        'THEORY_PENDING', 'TESTS_PENDING', 'PRACTICAL_PENDING', 'DRIVING_PENDING', 
+        'PAYMENT', 'LICENSE_PAYMENT_PENDING', 'LICENSE_FEE_PENDING', 
+        'LICENSE_GENERATION_PENDING', 'FINAL_REVIEW', 'FINAL_PAYMENT_VERIFICATION', 
+        'REVIEW', 'LICENSE_READY', 'COMPLETED'
+    ].includes(stage);
+
+    // 🚨 FIX 2: Added ALL post-driving stages so it NEVER re-locks
+    const isDrivingUnlocked = [
+        'PRACTICAL_PENDING', 'DRIVING_PENDING', 
+        'PAYMENT', 'LICENSE_PAYMENT_PENDING', 'LICENSE_FEE_PENDING', 
+        'LICENSE_GENERATION_PENDING', 'FINAL_REVIEW', 'FINAL_PAYMENT_VERIFICATION', 
+        'REVIEW', 'LICENSE_READY', 'COMPLETED'
+    ].includes(stage);
+
+    // 🚨 FIX 3: Added ALL final stages to ensure Practical stays "Passed"
+    const isPracticalPassed = [
+        'PAYMENT', 'LICENSE_PAYMENT_PENDING', 'LICENSE_FEE_PENDING', 
+        'LICENSE_GENERATION_PENDING', 'FINAL_REVIEW', 'FINAL_PAYMENT_VERIFICATION', 
+        'REVIEW', 'LICENSE_READY', 'COMPLETED'
+    ].includes(stage);
+
+    // 🚨 SUCCESS OVERRIDE: If both tests are done, show a permanent success screen
+    if (isPracticalPassed) {
+        testsUnlockedDiv.innerHTML = `
+            <div class="card" style="text-align:center; padding: 40px 20px; border-top: 4px solid var(--teal); animation: fadeIn 0.4s ease;">
+                <div style="background: var(--teal); width: 70px; height: 70px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px auto; box-shadow: 0 4px 15px rgba(0, 212, 170, 0.2);">
+                    <span style="color: var(--navy); font-size: 2.5rem; font-weight: bold;">✓</span>
+                </div>
+                <h3 style="color:var(--white); margin-bottom: 10px; font-size: 1.4rem;">All Tests Completed</h3>
+                <p style="color:var(--muted); font-size:0.95rem; max-width: 450px; margin: 0 auto 25px auto; line-height: 1.6;">
+                    You have successfully passed both your Theory and Practical exams. You can now proceed to pay your final license issuance fee.
+                </p>
+                <button class="btn btn-primary btn-lg" onclick="showSection('payments', document.getElementById('nav-payments'))">
+                    Proceed to Payments Tab →
+                </button>
+            </div>`;
+        return; // Stop execution! Do not draw the individual test boxes.
+    }
+
+    // Fetch attempts from the application object
+    const attemptsUsed = currentApp.theoryAttempts || 0;
+    
+    const isPracticalScheduled = (hasDrivingSchedule === true);
+
+    // STANDARD TEST VIEW (If they haven't finished both tests yet)
+    testsUnlockedDiv.innerHTML = `
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+            
+            <div class="card ${!isTheoryUnlocked ? 'section-locked' : ''}" style="position: relative; border-top: 4px solid var(--teal);">
+                ${!isTheoryUnlocked ? `
+                <div class="lock-overlay">
+                    <div style="font-size: 2rem; margin-bottom: 10px;">🔒</div>
+                    <div class="lock-msg">Medical Verification Required</div>
+                </div>` : ''}
+                
+                <div class="card-header">
+                    <h3>1. Computer Theory Test</h3>
+                    <span class="badge badge-teal">Auto-Graded</span>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; background: rgba(255,255,255,0.02); padding: 16px; border-radius: 8px; border: 1px solid var(--border);">
+                    <div>
+                        <p style="font-size: 0.85rem; color: var(--muted); margin: 0 0 8px 0;">
+                            Take the 5-question multiple choice test. Minimum 70% required to pass.
+                        </p>
+                        <div style="font-size: 0.95rem; color: var(--white);">
+                            <strong>Attempts Used:</strong> <span style="color: ${attemptsUsed >= 2 ? 'var(--red)' : 'var(--teal)'}; font-weight: bold;">${attemptsUsed} / 3</span>
+                        </div>
+                    </div>
+                </div>
+
+                ${['THEORY_PENDING', 'TESTS_PENDING'].includes(stage) ? `
+                        <button type="button" class="btn btn-primary" style="width:100%; font-size: 1.05rem;" onclick="startTheoryTest()">
+                            Start Theory Test Now →
+                        </button>
+                    ` : isDrivingUnlocked ? `
+                    <div style="padding: 14px; background: rgba(0,212,170,0.1); color: var(--teal); border-radius: 8px; text-align: center; font-weight: bold; border: 1px solid rgba(0,212,170,0.3); font-size: 1.05rem;">
+                        ✅ Theory Test Passed
+                    </div>
+                ` : ``}
+            </div>
+
+            <div class="card ${!isDrivingUnlocked ? 'section-locked' : ''}" style="position: relative; border-top: 4px solid var(--gold);">
+                ${!isDrivingUnlocked ? `
+                <div class="lock-overlay">
+                    <div style="font-size: 2rem; margin-bottom: 10px;">🔒</div>
+                    <div class="lock-msg">Theory Test Must Be Passed First</div>
+                </div>` : ''}
+                
+                <div class="card-header">
+                    <h3>2. Practical Driving Test</h3>
+                    <span class="badge badge-gold">Officer Monitored</span>
+                </div>
+                <p style="font-size: 0.85rem; color: var(--muted); margin-bottom: 15px;">
+                    Schedule an in-person driving test at your nearest center. You must bring your vehicle.
+                </p>
+                
+                ${isPracticalScheduled ? `
+                    <div style="padding: 14px; background: rgba(255,193,7,0.1); color: var(--gold); border-radius: 8px; text-align: center; font-weight: bold; border: 1px solid rgba(255,193,7,0.3); font-size: 1.05rem;">
+                        ⏳ Test Scheduled! Visit the center on your chosen date.
+                    </div>
+                ` : `
+                    <button class="btn btn-primary" style="width:100%; font-size: 1.05rem;" onclick="openScheduleModal()">
+                        Schedule Driving Test
+                    </button>
+                `}
+            </div>
+            
+        </div>
+    `;
+}
+
+/* ══════════════════════════════════════════
+   SCHEDULE MODAL — District + Load Balancing
+   ══════════════════════════════════════════
+
+   Design:
+   ① When the modal opens:  pre-load busy dates from the backend so the
+      date-picker visually blocks fully-booked days (onchange validation).
+
+   ② validateScheduleDate():  fires on every date-input change and:
+       • Rejects weekends immediately (no round-trip needed).
+       • Checks the in-memory busyDates list and shows a warning if the
+         chosen date is fully booked, so the user knows before clicking Submit.
+
+   ③ scheduleTest():  called on form submit.
+       • Re-validates weekend + busy-date locally (fast).
+       • Sends POST to /api/applicant/tests/schedule.
+       • Handles 400 responses from the backend (weekend / full-day) gracefully
+         with a descriptive Toast instead of a generic "error".
+
+   ══════════════════════════════════════════ */
+
+// In-memory cache of dates that are fully booked for the current center.
+// Populated by initScheduleModal() each time the modal opens.
+let _busyDates = [];  // Array of "YYYY-MM-DD" strings
+
+/**
+ * Called by openModal('scheduleModal') — wire this up in the openModal function,
+ * OR call it directly from the "Schedule Driving Test" button onclick:
+ *   onclick="openScheduleModal()"
+ */
+ async function openScheduleModal() {
+	    // 🚨 THE FIX: Get TODAY's date instead of tomorrow
+	    const today = new Date();
+	    
+	    // Set the calendar minimum date to TODAY
+	    document.getElementById('schedDate').min = today.toISOString().split('T')[0];
+	    document.getElementById('schedDate').value = '';
+
+	    const feedback = document.getElementById('schedDateFeedback');
+	    if (feedback) { feedback.style.display = 'none'; }
+
+	    // Set the default dropdown value to the user's district
+	    const district = currentUser?.district || 'Lahore';
+	    const centerSelect = document.getElementById('schedCenterSelect');
+	    
+	    // Logic to map district to center
+	    const centerMap = { 'Lahore': 'Lahore Motor Registration Authority', 'Rawalpindi': 'Rawalpindi DLMS Office' };
+	    centerSelect.value = centerMap[district] || 'Lahore Motor Registration Authority';
+
+	    openModal('scheduleModal');
+
+	    // Load dates for the currently selected center
+	    await loadBusyDatesForCenter(centerSelect.value);
+	}
+
+/**
+ * Fetch busy (fully-booked) dates from the backend for a given center.
+ * Stores the result in _busyDates so validateScheduleDate() can use it
+ * without an extra round-trip on every date change.
+ */
+async function loadBusyDatesForCenter(center) {
+  const statusEl = document.getElementById('schedBusyDatesStatus');
+  if (statusEl) statusEl.style.display = 'block';
+
+  try {
+    const res = await API.get(
+      `/api/applicant/tests/busy-dates?testCenter=${encodeURIComponent(center)}`
+    );
+    // The endpoint returns a plain array of "YYYY-MM-DD" strings
+    _busyDates = Array.isArray(res) ? res : (res?.data || []);
+  } catch (e) {
+    // Non-fatal: the backend will enforce the cap at submit time
+    _busyDates = [];
+    console.warn('Could not fetch busy dates:', e);
+  } finally {
+    if (statusEl) statusEl.style.display = 'none';
+  }
+}
+
+/**
+ * Fires on every change of the date input (onchange="validateScheduleDate(this)").
+ *
+ * Rules enforced here (client-side, instant feedback):
+ *  1. Weekend → clear the input, show error, disable Submit.
+ *  2. Busy date  → keep the input but show a prominent warning and disable Submit.
+ *  3. Valid date → show green confirmation, enable Submit.
+ */
+function validateScheduleDate(input) {
+  const feedback  = document.getElementById('schedDateFeedback');
+  const submitBtn = document.getElementById('btnConfirmSchedule');
+  if (!feedback || !input.value) return;
+
+  feedback.style.display = 'block';
+
+  // Parse the date. HTML date inputs give "YYYY-MM-DD"; new Date() can misparse
+  // these as UTC midnight, so we split manually to avoid timezone off-by-one.
+  const [y, m, d] = input.value.split('-').map(Number);
+  const chosen    = new Date(y, m - 1, d);   // local midnight
+  const dow       = chosen.getDay();          // 0=Sun, 1=Mon … 6=Sat
+
+  // ── Rule 1: Weekends ──────────────────────────────────────────────────────
+  if (dow === 0 || dow === 6) {
+    input.value         = '';
+    feedback.innerHTML  = '⛔ Testing centers are <strong>closed on weekends</strong>. Please choose a Monday–Friday date.';
+    feedback.style.color = 'var(--red, #f87171)';
+    if (submitBtn) submitBtn.disabled = true;
+    return;
+  }
+
+  // ── Rule 2: Fully booked date ──────────────────────────────────────────────
+  if (_busyDates.includes(input.value)) {
+    feedback.innerHTML  = '📅 This date is <strong>fully booked</strong> (30/30 slots taken). Please choose a different date.';
+    feedback.style.color = 'var(--amber, #fbbf24)';
+    if (submitBtn) submitBtn.disabled = true;
+    return;
+  }
+
+  // ── Rule 3: Valid ──────────────────────────────────────────────────────────
+  const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  feedback.innerHTML  = `✅ <strong>${dayNames[dow]}</strong> — this slot is available.`;
+  feedback.style.color = 'var(--teal, #00d4aa)';
+  if (submitBtn) submitBtn.disabled = false;
+}
+
+async function scheduleTest() {
+  const type    = document.getElementById('schedTestType').value;
+  const center  = document.getElementById('schedCenterSelect').value; 
+  const date    = document.getElementById('schedDate').value;
+
+  // ── LOCAL GUARDS (instant, no round-trip) ─────────────────────────────────
+  if (!date) {
+    Toast.warning('Please select a date.');
+    return;
+  }
+  if (!currentAppId) {
+    Toast.warning('No active application found.');
+    return;
+  }
+
+  // Weekend double-check (browser date inputs can still be manipulated by
+  // DevTools; this mirrors the service-layer guard)
+  const [y, m, d] = date.split('-').map(Number);
+  const dow = new Date(y, m - 1, d).getDay();
+  if (dow === 0 || dow === 6) {
+    Toast.warning('Government testing centers are closed on weekends. Please choose a Monday–Friday date.');
+    return;
+  }
+
+  // Busy-date double-check (pre-fetched list)
+  if (_busyDates.includes(date)) {
+    Toast.warning('This date is fully booked (30/30 tests). Please choose a different date.');
+    return;
+  }
+
+  // ── SUBMIT ────────────────────────────────────────────────────────────────
+  const btn = document.getElementById('btnConfirmSchedule');
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await API.post('/api/applicant/tests/schedule', {
+      testType: type, testCenter: center, testDate: date, applicationId: currentAppId
+    });
+
+    if (res?.success) {
+      Toast.success('Test scheduled! You will receive a confirmation notification.');
+      closeModal('scheduleModal');
+      await loadAll();
+    } else {
+      // Business-rule rejection from the backend (weekend / full-day)
+      Toast.error(res?.message || 'Failed to schedule test. Please try a different date.');
+      // Re-fetch busy dates since the schedule state may have changed
+      await loadBusyDatesForCenter(center);
+    }
+  } catch (e) {
+    Toast.error('Could not connect to the server. Please try again.');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function rescheduleTest(testId) {
+  Toast.info('To reschedule, please contact your testing officer directly.');
+}
+
+/* ══════════════════════════════════════════
+   PAYMENTS (fully dynamic)
+   ══════════════════════════════════════════ */
+async function loadPayments() {
+  if (!currentAppId) return;
+  try {
+    const res      = await API.get(`/api/applicant/payments?applicationId=${currentAppId}`);
+    const payments = res?.data || [];
+    renderPayments(payments);
+  } catch {
+    renderPayments([]);
+  }
+}
+
+function renderPayments(payments) {
+    const list = document.getElementById('paymentList');
+    
+    // 1. Update the Totals dynamically
+    let paidTotal = 0;
+    let pendingTotal = 0;
+    
+    payments.forEach(p => {
+        const amt = p.amount || 300;
+        if (p.paymentStatus === 'APPROVED' || p.paymentStatus === 'COMPLETED') paidTotal += amt;
+        else if (p.paymentStatus === 'VERIFICATION_PENDING' || p.paymentStatus === 'PENDING') pendingTotal += amt;
+    });
+    
+    document.getElementById('paidTotal').textContent = paidTotal.toLocaleString();
+    document.getElementById('pendingTotal').textContent = pendingTotal.toLocaleString();
+
+    // 2. Empty State
+    if (!payments.length) {
+        list.innerHTML = '<p style="text-align:center;padding:30px;color:var(--muted);">No payment history found.</p>';
+        return;
+    }
+
+    // 3. Sort by newest first
+    const sorted = payments.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+
+    // 4. Render Beautifully Aligned Cards
+    list.innerHTML = sorted.map((p, index) => {
+        const isApproved = p.paymentStatus === 'APPROVED' || p.paymentStatus === 'COMPLETED';
+        const isRejected = p.paymentStatus === 'REJECTED';
+        
+        let statusBadge = '<span class="badge badge-gold" style="font-size:0.65rem; padding: 4px 10px;">⏳ PENDING</span>';
+        let amountStyle = 'color: var(--gold);';
+        let rowStyle = 'background: rgba(255,255,255,0.02); border: 1px solid var(--border);';
+        let actionBtn = '';
+
+        if (isApproved) {
+            statusBadge = '<span class="badge badge-teal" style="font-size:0.65rem; padding: 4px 10px;">✅ APPROVED</span>';
+            amountStyle = 'color: var(--teal);';
+        } else if (isRejected) {
+            statusBadge = '<span class="badge badge-red" style="font-size:0.65rem; padding: 4px 10px;">❌ REJECTED</span>';
+            amountStyle = 'color: var(--muted); text-decoration: line-through;';
+            rowStyle = 'background: rgba(244,67,54,0.05); border: 1px solid rgba(244,67,54,0.3);';
+            if (index === 0) {
+                actionBtn = `<button class="btn btn-primary btn-sm" onclick="openModal('payModal')">Re-Submit Payment</button>`;
+            }
+        }
+
+        const title = p.paymentType ? p.paymentType.replace('_', ' ') : 'LEARNER FEE';
+
+        return `
+        <div style="display:flex; flex-direction:column; padding: 18px 20px; border-radius: var(--r); margin-bottom: 12px; transition: 0.2s; ${rowStyle}">
+            
+            <div style="display:flex; justify-content: space-between; align-items: center;">
+                
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <div style="font-size: 1.05rem; font-weight: 700; color: var(--white); letter-spacing: 0.5px;">${title}</div>
+                    <div style="font-size: 0.75rem; color: var(--muted); font-family: var(--mono);">
+                        TID: <span style="color: var(--off-white);">${p.transactionId || 'N/A'}</span> &nbsp;&bull;&nbsp; ${fmt.date(p.paymentDate)}
+                    </div>
+                </div>
+
+                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+                    <div style="font-size: 1.15rem; font-weight: 700; font-family: var(--mono); ${amountStyle}">PKR ${p.amount || 300}</div>
+                    ${statusBadge}
+                </div>
+
+            </div>
+            
+            ${p.remarks && isRejected ? `<div style="margin-top: 14px; font-size: 0.8rem; color: #ff9999;"><strong>Reason:</strong> ${p.remarks}</div>` : ''}
+            ${actionBtn ? `<div style="text-align: right; border-top: 1px dashed rgba(244,67,54,0.3); margin-top: 14px; padding-top: 14px;">${actionBtn}</div>` : ''}
+            
+        </div>
+        `;
+    }).join('');
+}
+
+async function submitPayment() {
+    const transId = document.getElementById('transactionIdInput')?.value.trim();
+    const method = document.getElementById('payMethod')?.value;
+    if (!transId) { Toast.warning('Transaction ID is required.'); return; }
+
+    // Check an array of all possible final fee stages!
+    const isFinalFee = ['LICENSE_PAYMENT_PENDING', 'LICENSE_FEE_PENDING', 'PAYMENT', 'FINAL_PAYMENT_VERIFICATION'].includes(currentApp.currentStage);
+    
+    const pType = isFinalFee ? 'LICENSE_FEE' : 'LEARNER_FEE';
+    const pAmount = isFinalFee ? 2500 : 300;
+
+    try {
+        const res = await API.post(`/api/applications/${currentAppId}/submit-fee`, {
+            transactionId: transId, amount: pAmount, paymentMethod: method, paymentType: pType
+        });
+
+        if (res?.success) {
+            Toast.success('Payment submitted! Waiting for Officer approval.');
+            closeModal('payModal');
+            
+            // 🚨 THE FIX: Force the UI stage to update instantly in the browser memory
+            currentApp.currentStage = isFinalFee ? 'FINAL_PAYMENT_VERIFICATION' : 'PAYMENT_VERIFICATION';
+            
+            await loadAll(); 
+        }
+    } catch (e) {
+        Toast.error('Submission failed.');
+    }
+}
+
+async function requestFinalLicense(appId) {
+    Loader.show('Generating License...');
+    try {
+        await API.post(`/api/applications/${appId}/request-final-license`);
+        Toast.success('Sent for final officer validation!');
+        await loadAll();
+    } catch(e) {
+        Toast.error('Failed to request license.');
+    } finally {
+        Loader.hide();
+    }
+}
+
+function printLearnerPermit() {
+    const printContent = document.getElementById('printableLearnerCard').innerHTML;
+    const originalContent = document.body.innerHTML;
+    
+    // We wrap it in a dark container so it keeps its beautiful UI when printing to PDF
+    document.body.innerHTML = `
+        <div style="padding:20px; max-width: 500px; margin: 0 auto; background: #0f172a !important; color: white !important; -webkit-print-color-adjust: exact;">
+            ${printContent}
+        </div>`;
+        
+    window.print();
+    document.body.innerHTML = originalContent;
+    window.location.reload(); 
+}
+
+function printLicense() {
+    const printContent = document.getElementById('printableLicenseCard').innerHTML;
+    const originalContent = document.body.innerHTML;
+    document.body.innerHTML = `<div style="padding:20px; max-width: 500px; margin: 0 auto; background: white !important; -webkit-print-color-adjust: exact;">${printContent}</div>`;
+    window.print();
+    document.body.innerHTML = originalContent;
+    window.location.reload(); 
+}
+
+/* ══════════════════════════════════════════
+PENALTY POINTS LOGIC
+══════════════════════════════════════════ */
+function renderPenaltyPoints(app) {
+ const ppCard = document.getElementById('penaltyPointsCard');
+ 
+ // Only show the points card IF they have at least been issued a learner permit
+ const pastLearner = ['LEARNER_ISSUED', 'DOCS', 'MEDICAL', 'MEDICAL_PENDING', 'THEORY_PENDING', 'TESTS_PENDING', 'PRACTICAL_PENDING', 'PAYMENT', 'LICENSE_PAYMENT_PENDING', 'LICENSE_FEE_PENDING', 'LICENSE_GENERATION_PENDING', 'FINAL_REVIEW', 'FINAL_PAYMENT_VERIFICATION', 'REVIEW', 'LICENSE_READY', 'COMPLETED'].includes(app.currentStage);
+
+ if (!pastLearner) {
+     ppCard.style.display = 'none';
+     return;
+ }
+
+ ppCard.style.display = 'block';
+ 
+ // Grab points and dates securely (handles both Application or nested License object from Spring Boot)
+ const points = app.totalPenaltyPoints || (app.license && app.license.totalPenaltyPoints) || 0;
+ const status = app.licenseStatus || app.applicationStatus || (app.license && app.license.status) || 'ACTIVE';
+ const suspensionDate = app.suspensionEndDate || (app.license && app.license.suspensionEndDate);
+
+ const pointsText = document.getElementById('appPenaltyPoints');
+ const warningBlock = document.getElementById('penaltyWarningBlock');
+ 
+ pointsText.textContent = `${points} / 30`;
+ warningBlock.innerHTML = '';
+
+ // LOGIC: Blocked (30+ points)
+ if (points >= 30 || status === 'SUSPENDED') {
+     ppCard.style.borderLeftColor = '#ff4d4d';
+     pointsText.style.color = '#ff4d4d';
+     
+     const dateStr = suspensionDate ? fmt.date(suspensionDate) : '3 Months from now';
+     warningBlock.innerHTML = `
+         <div style="margin-top: 15px; padding: 12px; background: rgba(255, 77, 77, 0.1); color: #ff4d4d; border-radius: 8px; border: 1px solid rgba(255, 77, 77, 0.3);">
+             <div style="font-size: 1.1rem; margin-bottom: 5px;">🚫 <strong>LICENSE SUSPENDED</strong></div>
+             Your license has been suspended due to accumulating 30 penalty points. You are legally prohibited from driving. 
+             Your driving privileges will be automatically reinstated on: <strong style="color:white;">${dateStr}</strong>.
+         </div>
+     `;
+ } 
+ // LOGIC: Warning Zone (20-29 points)
+ else if (points >= 20) {
+     ppCard.style.borderLeftColor = 'var(--amber)';
+     pointsText.style.color = 'var(--amber)';
+     
+     warningBlock.innerHTML = `
+         <div style="margin-top: 15px; padding: 12px; background: rgba(255, 184, 48, 0.1); color: var(--amber); border-radius: 8px; border: 1px solid rgba(255, 184, 48, 0.3);">
+             ⚠️ <strong>Warning:</strong> You have <strong>${points} points!</strong> You are approaching the 30-point limit. Further violations will result in an automatic 3-month license suspension.
+         </div>
+     `;
+ } 
+ // LOGIC: Safe Zone (0-19 points)
+ else {
+     ppCard.style.borderLeftColor = 'var(--teal)';
+     pointsText.style.color = 'var(--teal)';
+ }
+}
+
+/* ══════════════════════════════════════════
+PENALTY POINTS & DETAILED VIOLATIONS LOGIC
+══════════════════════════════════════════ */
+async function renderPenaltyPointsAndViolations() {
+    const ppCard = document.getElementById('penaltyPointsCard');
+    const tbody  = document.getElementById('applicantViolationsBody');
+
+    // ── GUARD 1: Required DOM elements and user context must exist ──
+    if (!ppCard || !tbody) return;
+
+    // ── GUARD 2: Only fire if the user has at least reached Learner Issued stage ──
+    // If we don't have a currentApp yet (no application at all), bail out silently.
+    if (!currentApp) {
+        ppCard.style.display = 'none';
+        return;
+    }
+
+    const hasPermanentLicense = [
+        'LICENSE_READY', 'COMPLETED'
+    ].includes(currentApp.currentStage) || currentApp.applicationStatus === 'APPROVED';
+
+    const hasLicenseInProgress = [
+        'LEARNER_ISSUED', 'DOCS', 'MEDICAL', 'MEDICAL_PENDING',
+        'THEORY_PENDING', 'TESTS_PENDING', 'PRACTICAL_PENDING',
+        'PAYMENT', 'LICENSE_PAYMENT_PENDING', 'LICENSE_FEE_PENDING',
+        'LICENSE_GENERATION_PENDING', 'FINAL_REVIEW', 'FINAL_PAYMENT_VERIFICATION', 'REVIEW'
+    ].includes(currentApp.currentStage);
+
+    // Only show this card once the applicant is past the initial learner stages
+    if (!hasPermanentLicense && !hasLicenseInProgress) {
+        ppCard.style.display = 'none';
+        return;
+    }
+
+    // Show the card and indicate loading
+    ppCard.style.display = 'block';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:var(--muted);">Loading records...</td></tr>';
+
+    try {
+        // ── FIX: Use the shared API helper so session cookies/auth headers are included ──
+        // This prevents silent 401/403 failures that froze the table on "Loading records..."
+        const data = await API.get('/api/applicant/my-driving-record');
+
+        // Handle API-level error responses (e.g. {error: "User not found"})
+        if (!data || data.error || !data.license) {
+            // User has no driving record yet — show clean state gracefully
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:25px; color:var(--teal); font-weight:bold;">🎉 Clean record! No violations found.</td></tr>';
+            // Also reset points display to safe defaults
+            const pointsText = document.getElementById('appPenaltyPoints');
+            if (pointsText) pointsText.textContent = '0 / 30';
+            ppCard.style.borderLeftColor = 'var(--teal)';
+            return;
+        }
+
+        const license     = data.license;
+        const violations  = Array.isArray(data.violations) ? data.violations : [];
+        const points      = parseInt(license.totalPenaltyPoints) || 0;
+        const status      = license.status || 'ACTIVE';
+        const suspensionDate = license.suspensionEndDate;
+
+        const pointsText  = document.getElementById('appPenaltyPoints');
+        const warningBlock = document.getElementById('penaltyWarningBlock');
+
+        if (pointsText) pointsText.textContent = `${points} / 30`;
+        if (warningBlock) warningBlock.innerHTML = '';
+
+        // ── UI STATE: Suspended (30+ points) ──
+        if (points >= 30 || status === 'SUSPENDED') {
+            ppCard.style.borderLeftColor = '#ff4d4d';
+            if (pointsText) pointsText.style.color = '#ff4d4d';
+            const dateStr = suspensionDate
+                ? new Date(suspensionDate).toLocaleDateString('en-PK', {day:'2-digit', month:'short', year:'numeric'})
+                : '3 months from suspension date';
+            if (warningBlock) warningBlock.innerHTML = `
+                <div style="margin-top:12px; padding:16px 18px; background:rgba(255,26,26,0.1); color:#ff4d4d; border-radius:8px; border:2px solid rgba(255,26,26,0.4); font-size:1rem; line-height:1.7;">
+                    🚫 <strong style="font-size:1.05rem; letter-spacing:0.03em;">LICENSE BLOCKED.</strong><br>
+                    You have reached <strong style="color:white;">${points} penalty points</strong>. You are <strong style="color:white;">not allowed to drive.</strong><br>
+                    Your license will unlock on <strong style="color:white; font-family:monospace;">${dateStr}</strong>.
+                </div>`;
+            // ── TASK 1: Apply the BLOCKED stamp over the license card ──
+            applySuspendedStamp(true);
+        }
+        // ── UI STATE: Warning Zone (20–29 points) ──
+        else if (points >= 20) {
+            ppCard.style.borderLeftColor = 'var(--amber)';
+            if (pointsText) pointsText.style.color = 'var(--amber)';
+            if (warningBlock) warningBlock.innerHTML = `
+                <div style="margin-top:12px; padding:12px; background:rgba(255,184,48,0.1); color:var(--amber); border-radius:8px; border:1px solid rgba(255,184,48,0.3);">
+                    ⚠️ <strong>Warning:</strong> You have <strong>${points} points</strong>. You are approaching the 30-point suspension threshold.
+                </div>`;
+            applySuspendedStamp(false);
+        }
+        // ── UI STATE: Safe Zone (0–19 points) ──
+        else {
+            ppCard.style.borderLeftColor = 'var(--teal)';
+            if (pointsText) pointsText.style.color = 'var(--teal)';
+            applySuspendedStamp(false);
+        }
+
+        // ── VIOLATIONS TABLE ──
+        if (violations.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:25px; color:var(--teal); font-weight:bold;">🎉 Clean record! No violations on file.</td></tr>';
+        } else {
+            tbody.innerHTML = violations.map(v => {
+                const isPaid       = v.challanStatus === 'PAID';
+                const badgeStyle   = isPaid
+                    ? 'background:rgba(0,212,170,.15); color:var(--teal); border:1px solid var(--teal);'
+                    : 'background:rgba(255,184,48,.15); color:var(--amber); border:1px solid var(--amber);';
+                const formattedType = v.violationType
+                    ? v.violationType.replace(/_/g, ' ')
+                    : '—';
+                const vDate = v.violationDate
+                    ? new Date(v.violationDate).toLocaleDateString('en-PK', {day:'2-digit', month:'short', year:'numeric'})
+                    : '—';
+
+                return `
+                <tr style="border-bottom:1px solid var(--border); background:rgba(255,255,255,0.01); transition:background .15s;"
+                    onmouseover="this.style.background='rgba(255,255,255,0.04)'"
+                    onmouseout="this.style.background='rgba(255,255,255,0.01)'">
+                    <td style="padding:12px; font-family:var(--mono); font-size:.82rem; color:var(--teal);">${escHtml(v.challanNo || '—')}</td>
+                    <td style="padding:12px; font-size:.84rem;">${escHtml(formattedType)}</td>
+                    <td style="padding:12px; color:#ff4d4d; font-weight:700; font-family:var(--mono);">+${v.penaltyPoints || 0}</td>
+                    <td style="padding:12px; font-family:var(--mono); font-size:.84rem;">PKR ${parseFloat(v.fineAmount || 0).toLocaleString()}</td>
+                    <td style="padding:12px; color:var(--muted); font-size:.82rem;">${vDate}</td>
+                    <td style="padding:12px;">
+                        <span style="font-size:.68rem; font-weight:700; padding:3px 9px; border-radius:20px; letter-spacing:.04em; text-transform:uppercase; ${badgeStyle}">
+                            ${escHtml(v.challanStatus || 'PENDING')}
+                        </span>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+    } catch (e) {
+        // ── FAIL SAFE: Never leave the table frozen on "Loading records..." ──
+        console.error('renderPenaltyPointsAndViolations error:', e);
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:var(--teal); font-weight:bold;">🎉 Clean record! No violations found.</td></tr>';
+        // Reset points display to safe defaults on any error
+        const pointsText = document.getElementById('appPenaltyPoints');
+        if (pointsText) { pointsText.textContent = '0 / 30'; pointsText.style.color = 'var(--teal)'; }
+        ppCard.style.borderLeftColor = 'var(--teal)';
+    }
+}
+
+/* ══════════════════════════════════════════
+   PROFILE
+   ══════════════════════════════════════════ */
+   function fillProfile() {
+	   const u = currentUser || {};
+	   
+	   // 1. Fill the inputs
+	   document.getElementById('pName').value     = u.fullNameEn    || '';
+	   document.getElementById('pCnic').value     = u.cnic          || '';
+	   document.getElementById('pEmail').value    = u.email         || '';
+	   document.getElementById('pMobile').value   = u.mobileNumber  || '';
+	   document.getElementById('pDob').value      = u.dob ? fmt.date(u.dob) : '';
+	   document.getElementById('pDistrict').value = u.district      || '';
+
+	   // 2. Fill the Neon Header
+	   if (document.getElementById('pTitleName')) {
+	       document.getElementById('pTitleName').textContent = u.fullNameEn || 'Applicant';
+	       document.getElementById('pTitleCnic').textContent = u.cnic || '—';
+	       
+	       const avatarDiv = document.getElementById('bigAvatar');
+	       const initials = fmt.initials(u.fullNameEn || 'A');
+	       
+	       // Load actual photo if application exists
+	       if (currentAppId) {
+	           const photoUrl = `/api/applicant/documents/photo?applicationId=${currentAppId}`;
+	           avatarDiv.innerHTML = `<img src="${photoUrl}" style="width:100%; height:100%; object-fit:cover;" onerror="this.outerHTML='${initials}'" alt="Photo">`;
+	       } else {
+	           avatarDiv.textContent = initials;
+	       }
+	   }
+	 }
+
+function toggleEdit() {
+  editMode = !editMode;
+  ['pName','pMobile','pDistrict'].forEach(id => {
+    document.getElementById(id).readOnly = !editMode;
+  });
+  document.getElementById('saveProfile').style.display = editMode ? 'block' : 'none';
+  Toast.info(editMode ? 'Editing enabled.' : 'Edit cancelled.');
+}
+
+document.getElementById('profileForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  try {
+    const res = await API.put('/api/applicant/profile', {
+      fullNameEn:   document.getElementById('pName').value,
+      mobileNumber: document.getElementById('pMobile').value,
+      district:     document.getElementById('pDistrict').value,
+    });
+    if (res?.success || res?.data) {
+      Toast.success('Profile updated successfully!');
+      if (res.data) { currentUser = res.data; Session.user = res.data; }
+    } else {
+      Toast.error(res?.message || 'Failed to update profile.');
+    }
+  } catch {
+    Toast.error('Could not connect to server.');
+  }
+  editMode = false;
+  document.getElementById('saveProfile').style.display = 'none';
+  ['pName','pMobile','pDistrict'].forEach(id => { document.getElementById(id).readOnly = true; });
+});
+
+function showSection(name, navEl) {
+   
+   // 1. HARD LOCKOUT: Check if the sidebar button is visually locked
+   if (navEl && navEl.classList.contains('locked')) {
+       if (name === 'tests') {
+           Toast.warning('Section Locked: Please complete all Document verification first.');
+       } else if (name === 'documents') {
+           Toast.warning('Section Locked: Please wait for your Learner Permit to be issued.');
+       } else {
+           Toast.warning('Section Locked: Please complete the required previous steps.');
+       }
+       return; // Instantly stops the navigation
+   }
+
+   // 2. FALLBACK LOCK: In case the user clicks an internal button instead of the sidebar
+   if (currentApp) {
+       const stage = currentApp.currentStage;
+       // If they are anywhere in the Learner process...
+       const isLearnerStage = stage === 'LEARNER_PENDING' || stage === 'LEARNER_PAYMENT_PENDING' || stage === 'PAYMENT_VERIFICATION';
+       
+       if (isLearnerStage && (name === 'documents' || name === 'tests')) {
+           Toast.warning('Section Locked: Please complete the Learner Permit stage first.');
+           return;
+       }
+   } else if (!currentApp && (name === 'documents' || name === 'tests' || name === 'payments' || name === 'application')) {
+       // If they haven't even applied yet!
+       Toast.warning('Section Locked: Please apply for a Learner Permit first.');
+       return;
+   }
+
+   // 3. PROCEED WITH NAVIGATION
+   document.querySelectorAll('[id^="sec-"]').forEach(s => s.style.display = 'none');
+   
+   const targetSection = document.getElementById('sec-' + name);
+   if (targetSection) targetSection.style.display = 'block';
+   
+   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+   if (navEl) navEl.classList.add('active');
+
+   const titles = {
+     overview:'Dashboard', application:'My Application', documents:'Documents',
+     tests:'Tests', payments:'Payments', notifications:'Notifications', profile:'Profile'
+   };
+   
+   const topbar = document.getElementById('topbarTitle');
+   if (topbar) {
+       topbar.innerHTML = `${titles[name] || name} <span>${name === 'overview' ? 'Overview' : ''}</span>`;
+   }
+}
+
+/* ══════════════════════════════════════════
+   UTILITY HELPERS
+   ══════════════════════════════════════════ */
+function computeExpiry(years, fromDate) {
+  const d = fromDate ? new Date(fromDate) : new Date();
+  d.setFullYear(d.getFullYear() + years);
+  return fmt.date(d.toISOString());
+}
+
+function categoryLabel(cat) {
+  const map = { A:'Motorcycle', B:'Car / Light Vehicle', C:'Commercial',
+                LTV:'Light Transport', HTV:'Heavy Transport' };
+  return map[cat] || cat || '';
+}
+
+/* Prevent XSS when rendering user-supplied data */
+function escHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ══════════════════════════════════════════
+THEORY TEST LAUNCHER
+══════════════════════════════════════════ */
+function startTheoryTest() {
+ if (!currentAppId) {
+     Toast.warning('No active application found.');
+     return;
+ }
+
+ // 1. Open the test in a new tab
+ window.open('/theory-test?appId=' + currentAppId, '_blank');
+ 
+ // 2. Show a waiting dialog on the dashboard
+ Swal.fire({
+     title: 'Theory Test in Progress',
+     text: 'Please complete your theory test in the new tab. Click the button below ONLY when you have finished.',
+     icon: 'info',
+     confirmButtonText: 'I have finished the test ↻',
+     confirmButtonColor: 'var(--teal)',
+     allowOutsideClick: false
+ }).then((result) => {
+     if (result.isConfirmed) {
+         // Re-fetch the latest database status and redraw the UI automatically!
+         loadAll(); 
+     }
+ });
+}
+
+/* ── MODAL HELPERS ── */
+function openModal(id)  { document.getElementById(id)?.classList.add('open'); }
+function closeModal(id) { document.getElementById(id)?.classList.remove('open'); }
+document.addEventListener('click', e => {
+  if (e.target.classList.contains('modal-overlay')) e.target.classList.remove('open');
+});
+
+/* ── LOGOUT ── */
+function logout() {
+  API.post('/api/auth/logout').finally(() => { Session.clear(); window.location.href = '/login'; });
+}
+</script>
+</body>
+</html>

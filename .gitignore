@@ -1,0 +1,9 @@
+target/
+.metadata/
+.apt_generated/
+.apt_generated_tests/
+.github/
+*.log
+.settings/
+.classpath
+.project

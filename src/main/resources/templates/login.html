@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DLMS Portal — Sign In</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+<style>
+:root {
+  --navy:#0a0f1e;--navy-2:#0f1729;--navy-3:#162040;--navy-4:#1e2d56;
+  --teal:#00d4aa;--teal-dim:#00b08d;--teal-glow:rgba(0,212,170,.18);
+  --gold:#f5c842;--red:#ff4d6d;--white:#fff;--off-white:#e8edf5;
+  --muted:#8892aa;--border:rgba(255,255,255,.08);--border-2:rgba(0,212,170,.2);
+  --font:'Sora',sans-serif;--mono:'IBM Plex Mono',monospace;
+  --r:12px;--rl:18px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100vh;font-family:var(--font);overflow-x:hidden}
+
+/* ── CANVAS BACKGROUND ── */
+body{background:var(--navy);position:relative;}
+#bg-canvas{position:fixed;inset:0;z-index:0;}
+
+/* ── LAYOUT ── */
+.page{
+  position:relative;z-index:1;
+  display:grid;grid-template-columns:1fr 1fr;
+  min-height:100vh;
+}
+
+/* ── LEFT PANEL ── */
+.left-panel{
+  display:flex;flex-direction:column;
+  justify-content:center;align-items:flex-start;
+  padding:60px;
+  position:relative;overflow:hidden;
+}
+.left-panel::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(0,212,170,.06),rgba(30,45,86,.3));
+  border-right:1px solid var(--border);
+}
+.left-content{position:relative;z-index:1;max-width:440px;}
+
+.govt-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.2);
+  border-radius:6px;padding:5px 12px;margin-bottom:32px;
+}
+.govt-badge span{font-size:.7rem;font-weight:600;color:var(--gold);letter-spacing:.08em;text-transform:uppercase;}
+.govt-badge .dot{width:6px;height:6px;background:var(--gold);border-radius:50%;animation:blink 2s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+.left-logo{display:flex;align-items:center;gap:16px;margin-bottom:36px;}
+.logo-emblem{
+  width:60px;height:60px;
+  background:linear-gradient(135deg,var(--teal),var(--teal-dim));
+  border-radius:16px;display:flex;align-items:center;justify-content:center;
+  font-size:28px;flex-shrink:0;
+  box-shadow:0 0 30px rgba(0,212,170,.3);
+}
+.logo-text{line-height:1.2;}
+.logo-text .name{font-size:1.35rem;font-weight:700;color:var(--white);letter-spacing:-.01em;}
+.logo-text .sub{font-size:.75rem;color:var(--muted);margin-top:2px;}
+
+h1{font-size:2.4rem;font-weight:700;color:var(--white);line-height:1.15;letter-spacing:-.03em;margin-bottom:14px;}
+h1 em{font-style:normal;color:var(--teal);}
+.left-desc{font-size:.9rem;color:var(--muted);line-height:1.7;margin-bottom:40px;max-width:380px;}
+
+/* Feature list */
+.features{display:flex;flex-direction:column;gap:12px;}
+.feat{display:flex;align-items:center;gap:12px;}
+.feat-icon{
+  width:34px;height:34px;border-radius:9px;
+  background:var(--navy-3);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;font-size:1rem;
+}
+.feat-text{font-size:.82rem;color:var(--muted);}
+.feat-text strong{color:var(--off-white);font-weight:500;}
+
+/* Stat strip */
+.stat-strip{
+  display:flex;gap:28px;margin-top:44px;
+  padding-top:28px;border-top:1px solid var(--border);
+}
+.stat-item .val{font-size:1.5rem;font-weight:700;color:var(--white);font-family:var(--mono);}
+.stat-item .lbl{font-size:.7rem;color:var(--muted);margin-top:2px;}
+
+/* ── RIGHT PANEL ── */
+.right-panel{
+  display:flex;align-items:center;justify-content:center;
+  padding:40px;background:rgba(15,23,41,.5);backdrop-filter:blur(20px);
+}
+
+.login-box{
+  width:100%;max-width:420px;
+  background:rgba(15,23,41,.9);
+  border:1px solid var(--border);border-radius:24px;
+  padding:36px;backdrop-filter:blur(20px);
+  box-shadow:0 24px 80px rgba(0,0,0,.5);
+}
+
+.login-head{text-align:center;margin-bottom:28px;}
+.login-head h2{font-size:1.4rem;font-weight:700;color:var(--white);margin-bottom:6px;}
+.login-head p{font-size:.82rem;color:var(--muted);}
+
+/* Role selector */
+.role-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:24px;}
+.role-btn{
+  display:flex;flex-direction:column;align-items:center;gap:5px;
+  padding:12px 8px;
+  background:rgba(255,255,255,.03);
+  border:1.5px solid var(--border);
+  border-radius:12px;cursor:pointer;
+  transition:all .2s;
+}
+.role-btn:hover{border-color:rgba(0,212,170,.3);background:rgba(0,212,170,.05);}
+.role-btn.active{
+  border-color:var(--teal);background:rgba(0,212,170,.1);
+  box-shadow:0 0 16px rgba(0,212,170,.15);
+}
+.role-btn .r-icon{font-size:1.3rem;}
+.role-btn .r-label{font-size:.7rem;font-weight:600;color:var(--muted);text-align:center;line-height:1.3;}
+.role-btn.active .r-label{color:var(--teal);}
+
+/* Divider */
+.divider-text{
+  display:flex;align-items:center;gap:12px;margin-bottom:20px;
+  font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;
+}
+.divider-text::before,.divider-text::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* Form */
+.form-group{margin-bottom:16px;}
+.form-label{display:block;font-size:.73rem;font-weight:600;color:var(--muted);
+  margin-bottom:7px;text-transform:uppercase;letter-spacing:.06em;}
+.input-wrap{position:relative;}
+.input-wrap .input-icon{
+  position:absolute;left:12px;top:50%;transform:translateY(-50%);
+  font-size:.9rem;color:var(--muted);pointer-events:none;
+}
+.form-input{
+  width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border);
+  border-radius:10px;padding:11px 14px 11px 38px;
+  color:var(--off-white);font-size:.88rem;font-family:var(--font);
+  transition:all .2s;
+}
+.form-input:focus{outline:none;border-color:var(--teal);background:rgba(0,212,170,.05);
+  box-shadow:0 0 0 3px rgba(0,212,170,.1);}
+.form-input::placeholder{color:rgba(136,146,170,.4);}
+
+.pass-toggle{
+  position:absolute;right:12px;top:50%;transform:translateY(-50%);
+  background:none;border:none;color:var(--muted);cursor:pointer;font-size:.85rem;
+}
+.pass-toggle:hover{color:var(--teal);}
+
+/* Remember + Forgot */
+.form-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;}
+.check-label{display:flex;align-items:center;gap:7px;cursor:pointer;font-size:.78rem;color:var(--muted);}
+.check-label input{accent-color:var(--teal);}
+.forgot{font-size:.78rem;color:var(--teal);cursor:pointer;}
+.forgot:hover{text-decoration:underline;}
+
+/* Submit */
+.btn-login{
+  width:100%;padding:13px;border-radius:12px;border:none;
+  background:linear-gradient(135deg,var(--teal),var(--teal-dim));
+  color:var(--navy);font-family:var(--font);font-size:.9rem;font-weight:700;
+  cursor:pointer;transition:all .25s;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.btn-login:hover{filter:brightness(1.1);transform:translateY(-1px);
+  box-shadow:0 8px 24px rgba(0,212,170,.3);}
+.btn-login:active{transform:translateY(0);}
+.btn-login.loading{opacity:.7;pointer-events:none;}
+
+/* Register link */
+.register-link{text-align:center;margin-top:20px;font-size:.8rem;color:var(--muted);}
+.register-link a{color:var(--teal);font-weight:600;}
+
+/* Alert */
+.alert{
+  padding:10px 14px;border-radius:10px;font-size:.8rem;margin-bottom:16px;
+  display:none;align-items:center;gap:8px;
+}
+.alert.error{background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.2);color:#ff4d6d;display:flex;}
+.alert.success{background:rgba(0,212,170,.08);border:1px solid rgba(0,212,170,.2);color:var(--teal);display:flex;}
+
+/* ── ANIMATED PARTICLES ── */
+.particles{position:fixed;inset:0;pointer-events:none;z-index:0;}
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px){
+  .page{grid-template-columns:1fr;}
+  .left-panel{display:none;}
+  .right-panel{padding:24px;}
+}
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+
+<div class="page">
+  <!-- ── LEFT: BRANDING ── -->
+  <div class="left-panel">
+    <div class="left-content">
+      <div class="govt-badge">
+        <div class="dot"></div>
+        <span>Government of Punjab — Official Portal</span>
+      </div>
+
+      <div class="left-logo">
+        <div class="logo-emblem">🚗</div>
+        <div class="logo-text">
+          <div class="name">Punjab DLMS</div>
+          <div class="sub">Driving License Management System</div>
+        </div>
+      </div>
+
+      <h1>Your License,<br><em>Managed Digitally.</em></h1>
+      <p class="left-desc">Apply, renew, track, and verify driving licenses through a secure, transparent, and efficient government portal powered by modern technology.</p>
+
+      <div class="features">
+        <div class="feat">
+          <div class="feat-icon">📋</div>
+          <div class="feat-text"><strong>End-to-end digital applications</strong> — no paperwork queues</div>
+        </div>
+        <div class="feat">
+          <div class="feat-icon">🔔</div>
+          <div class="feat-text"><strong>Real-time status updates</strong> — always know your progress</div>
+        </div>
+        <div class="feat">
+          <div class="feat-icon">🛡️</div>
+          <div class="feat-text"><strong>Secure & verified</strong> — integrated NADRA verification</div>
+        </div>
+        <div class="feat">
+          <div class="feat-icon">🧪</div>
+          <div class="feat-text"><strong>Online theory testing</strong> — schedule at your convenience</div>
+        </div>
+      </div>
+
+      <div class="stat-strip">
+        <div class="stat-item"><div class="val">2.4M+</div><div class="lbl">Licenses Issued</div></div>
+        <div class="stat-item"><div class="val">98.2%</div><div class="lbl">Uptime SLA</div></div>
+        <div class="stat-item"><div class="val">36</div><div class="lbl">Districts Covered</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── RIGHT: LOGIN FORM ── -->
+  <div class="right-panel">
+    <div class="login-box">
+      <div class="login-head">
+        <h2>Welcome Back</h2>
+        <p>Sign in to access your DLMS account</p>
+      </div>
+
+      <!-- Alert -->
+      <div class="alert" id="alertBox">
+        <span id="alertIcon">✕</span>
+        <span id="alertMsg">Invalid credentials.</span>
+      </div>
+
+      <!-- Role selector -->
+      <div class="role-grid" id="roleGrid">
+        <button class="role-btn active" data-role="APPLICANT" onclick="selectRole(this)">
+          <span class="r-icon">👤</span>
+          <span class="r-label">Applicant</span>
+        </button>
+        <button class="role-btn" data-role="LICENSING_OFFICER" onclick="selectRole(this)">
+          <span class="r-icon">🏛️</span>
+          <span class="r-label">Licensing Officer</span>
+        </button>
+        <button class="role-btn" data-role="TESTING_OFFICER" onclick="selectRole(this)">
+          <span class="r-icon">🧪</span>
+          <span class="r-label">Testing Officer</span>
+        </button>
+        <button class="role-btn" data-role="TRAFFIC_POLICE" onclick="selectRole(this)">
+          <span class="r-icon">🚔</span>
+          <span class="r-label">Police Officer</span>
+        </button>
+        <button class="role-btn" data-role="ADMIN" onclick="selectRole(this)" style="grid-column: span 2;">
+          <span class="r-icon">👑</span>
+          <span class="r-label">System Admin</span>
+        </button>
+      </div>
+
+      <div class="divider-text">enter credentials</div>
+
+      <!-- Form -->
+      <form id="loginForm" onsubmit="handleLogin(event)">
+
+		  <input type="hidden" id="selectedRole" value="APPLICANT">
+		
+		  <div class="form-group">
+		    <label class="form-label">Email Address</label>
+		    <div class="input-wrap">
+		      <span class="input-icon">✉</span>
+		      <input type="email"
+		             class="form-input"
+		             id="email"
+		             name="email"
+		             placeholder="you@example.com"
+		             required>
+		    </div>
+		  </div>
+		
+		  <div class="form-group">
+		    <label class="form-label">Password</label>
+		    <div class="input-wrap">
+		      <span class="input-icon">🔒</span>
+		      <input type="password"
+		             class="form-input"
+		             id="password"
+		             name="password"
+		             placeholder="Enter your password"
+		             required>
+		      <button type="button" class="pass-toggle" onclick="togglePass()">👁</button>
+		    </div>
+		  </div>
+
+        <div class="form-row">
+          <label class="check-label">
+            <input type="checkbox" id="remember"> Remember me
+          </label>
+          <span class="forgot" onclick="showForgot()">Forgot password?</span>
+        </div>
+
+        <button type="submit" class="btn-login" id="loginBtn">
+          <span id="loginBtnText">Sign In</span>
+          <span>→</span>
+        </button>
+      </form>
+
+      <div class="register-link" id="registerLinkSection">
+		  New applicant? <a th:href="@{/register}" class="auth-link">Create account</a>
+		</div>
+    </div>
+  </div>
+</div>
+
+<script th:src="@{/js/script.js}"></script>
+<script>
+/* ── ANIMATED BACKGROUND CANVAS ── */
+(function() {
+  const canvas = document.getElementById('bg-canvas');
+  const ctx = canvas.getContext('2d');
+  let W, H, particles;
+
+  function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    initParticles();
+  }
+
+  function initParticles() {
+    particles = Array.from({length: 70}, () => ({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      r: Math.random() * 1.8 + 0.4,
+      vx: (Math.random() - 0.5) * 0.25,
+      vy: (Math.random() - 0.5) * 0.25,
+      a: Math.random() * 0.5 + 0.1,
+      color: Math.random() > 0.7 ? '#00d4aa' : '#1e2d56'
+    }));
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+
+    /* subtle grid */
+    ctx.strokeStyle = 'rgba(30,45,86,0.4)';
+    ctx.lineWidth = 0.5;
+    const spacing = 60;
+    for (let x = 0; x < W; x += spacing) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+    for (let y = 0; y < H; y += spacing) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+
+    /* glow blobs */
+    const blobs = [
+      {x: W*0.15, y: H*0.3,  r:220, c:'rgba(0,212,170,0.06)'},
+      {x: W*0.85, y: H*0.7,  r:300, c:'rgba(30,45,86,0.3)'},
+      {x: W*0.5,  y: H*0.05, r:180, c:'rgba(0,176,141,0.05)'},
+    ];
+    blobs.forEach(b => {
+      const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
+      g.addColorStop(0, b.c); g.addColorStop(1, 'transparent');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI*2); ctx.fill();
+    });
+
+    /* particles */
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+      if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = p.color + Math.floor(p.a * 255).toString(16).padStart(2,'0');
+      ctx.fill();
+    });
+
+    /* connection lines */
+    particles.forEach((a, i) => {
+      particles.slice(i+1).forEach(b => {
+        const d = Math.hypot(a.x-b.x, a.y-b.y);
+        if (d < 100) {
+          ctx.strokeStyle = `rgba(0,212,170,${(1-d/100)*0.08})`;
+          ctx.lineWidth = 0.5;
+          ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+        }
+      });
+    });
+
+    requestAnimationFrame(draw);
+  }
+
+  window.addEventListener('resize', resize);
+  resize();
+  draw();
+})();
+
+/* ── ROLE SELECTION ── */
+/* ── ROLE SELECTION ── */
+function selectRole(btn) {
+  // 1. Remove active class from all buttons
+  document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+  
+  // 2. Add active class to clicked button
+  btn.classList.add('active');
+  
+  // 3. Get the selected role and set the hidden input
+  const selectedRole = btn.dataset.role;
+  document.getElementById('selectedRole').value = selectedRole;
+
+  // 4. Show/Hide the registration link based on the role
+  const registerSection = document.getElementById('registerLinkSection');
+  if (selectedRole === 'APPLICANT') {
+    registerSection.style.display = 'block'; // Show for applicants
+  } else {
+    registerSection.style.display = 'none';  // Hide for officers/police
+  }
+}
+
+/* ── PASSWORD TOGGLE ── */
+function togglePass() {
+  const inp = document.getElementById('password');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+async function handleLogin(e) {
+	  e.preventDefault();
+	  
+	  const btn = document.getElementById('loginBtn');
+	  const txt = document.getElementById('loginBtnText');
+	  btn.classList.add('loading');
+	  txt.textContent = 'Signing in...';
+
+	  const payload = {
+	    email:    document.getElementById('email').value,
+	    password: document.getElementById('password').value,
+	    role:     document.getElementById('selectedRole').value
+	  };
+
+	  try {
+	    const res = await fetch('/api/auth/login', {
+	      method: 'POST',
+	      headers: { 'Content-Type': 'application/json' },
+	      credentials: 'same-origin',
+	      body: JSON.stringify(payload)
+	    });
+	    
+	    const data = await res.json();
+
+	    if (res.ok && data.success) {
+	        
+	      // 🚨 THE SECURITY FIX: Enforce Strict Role Matching 🚨
+	      // If the backend role doesn't match the UI box they clicked...
+	      if (data.data.role !== payload.role) {
+	         // Silently log them out immediately to kill the invalid Spring Security session
+	         await fetch('/api/auth/logout', { method: 'POST' }).catch(()=>{});
+	         
+	         // Block the login and show the error
+	         showAlert('error', 'Access Denied: The selected role box does not match your actual account permissions.');
+	         btn.classList.remove('loading');
+	         txt.textContent = 'Sign In';
+	         return; // Stop the function here!
+	      }
+
+	      // If roles match, proceed normally
+	      sessionStorage.setItem('dlms_user', JSON.stringify(data.data));
+	      showAlert('success', 'Login successful! Redirecting...');
+	      
+	      setTimeout(() => {
+	        const roleRoutes = {
+	          ADMIN:             '/admin-dashboard',
+	          APPLICANT:         '/applicant-dashboard',
+	          LICENSING_OFFICER: '/officer-dashboard',
+	          TESTING_OFFICER:   '/testing-dashboard',
+	          TRAFFIC_POLICE:    '/police-dashboard'
+	        };
+	        window.location.href = roleRoutes[data.data.role] || '/dashboard';
+	      }, 800);
+	      
+	    } else {
+	      let errorMsg = data.message || 'Invalid email or password.';
+	      // Check for suspended account message
+	      if (errorMsg.toLowerCase().includes('disabled') || 
+	          errorMsg.toLowerCase().includes('suspended') ||
+	          errorMsg.toLowerCase().includes('user is disabled')) {
+	        errorMsg = '⚠️ Your account has been suspended. Please contact the system administrator.';
+	      }
+	      showAlert('error', errorMsg);
+	    }
+	  } catch (err) {
+	    console.error(err);
+	    showAlert('error', 'Network error. Please try again.');
+	  } finally {
+	    if (btn.classList.contains('loading')) {
+	       btn.classList.remove('loading');
+	       txt.textContent = 'Sign In';
+	    }
+	  }
+	}
+
+function showAlert(type, msg) {
+  const box = document.getElementById('alertBox');
+  const icon = document.getElementById('alertIcon');
+  const msgEl = document.getElementById('alertMsg');
+  box.className = 'alert ' + type;
+  icon.textContent = type === 'success' ? '✓' : '✕';
+  msgEl.textContent = msg;
+}
+
+function showForgot() {
+  showAlert('info', 'Please contact your district licensing office to reset your password.');
+}
+</script>
+</body>
+</html>

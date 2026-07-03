@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>DLMS — Super Admin Portal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* ═══════════════════════════════════════════════════════════
+           DESIGN TOKENS & RESET
+        ═══════════════════════════════════════════════════════════ */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --navy: #070d1a; --navy-2: #0d1627; --navy-3: #111e35;
+            --slate: #1a2740; --slate-2: #1e2f4a; --border: rgba(255,255,255,0.07);
+            --teal: #00d4aa; --teal-dim: rgba(0,212,170,0.12);
+            --gold: #f5c842; --gold-dim: rgba(245,200,66,0.12);
+            --red: #ff4d6d; --red-dim: rgba(255,77,109,0.12);
+            --blue: #4d9fff; --blue-dim: rgba(77,159,255,0.12);
+            --violet: #a78bfa; --violet-dim: rgba(167,139,250,0.12);
+            --white: #f0f4ff; --muted: #5a7099;
+            --mono: 'IBM Plex Mono', monospace; --sans: 'Sora', sans-serif;
+            --sidebar-w: 260px; --radius: 14px; --radius-sm: 8px; --transition: 0.22s ease;
+        }
+        html { font-size: 15px; }
+        body { font-family: var(--sans); background: var(--navy); color: var(--white); min-height: 100vh; overflow-x: hidden; }
+        body::before {
+            content: ''; position: fixed; inset: 0;
+            background: radial-gradient(ellipse 80% 60% at 10% -10%, rgba(0,212,170,0.07) 0%, transparent 60%),
+                        radial-gradient(ellipse 60% 50% at 90% 110%, rgba(77,159,255,0.07) 0%, transparent 60%),
+                        radial-gradient(ellipse 40% 40% at 50% 50%, rgba(245,200,66,0.03) 0%, transparent 70%);
+            pointer-events: none; z-index: 0;
+        }
+        .app-shell { display: flex; min-height: 100vh; position: relative; z-index: 1; }
+
+        /* ── SIDEBAR ── */
+        .sidebar { width: var(--sidebar-w); min-height: 100vh; background: linear-gradient(180deg, rgba(13,22,39,0.97) 0%, rgba(10,18,33,0.98) 100%); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 100; backdrop-filter: blur(20px); }
+        .sidebar::before { content: ''; position: absolute; top: 0; left: 0; width: 2px; height: 100%; background: linear-gradient(180deg, transparent 0%, var(--teal) 30%, var(--blue) 70%, transparent 100%); opacity: 0.6; }
+        .sidebar-logo { display: flex; align-items: center; gap: 12px; padding: 24px 20px 22px; border-bottom: 1px solid var(--border); }
+        .logo-icon { width: 42px; height: 42px; background: linear-gradient(135deg, var(--gold) 0%, #e09b00 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; box-shadow: 0 4px 16px rgba(245,200,66,0.3); flex-shrink: 0; }
+        .logo-text strong { display: block; font-size: 0.95rem; font-weight: 700; color: var(--white); }
+        .logo-text span { display: block; font-size: 0.72rem; color: var(--muted); text-transform: uppercase; margin-top: 1px; }
+        .sidebar-nav { flex: 1; padding: 20px 12px; overflow-y: auto; }
+        .nav-section-label { font-size: 0.65rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); padding: 0 10px; margin-bottom: 10px; }
+        .nav-item { display: flex; align-items: center; gap: 11px; padding: 11px 14px; border-radius: var(--radius-sm); cursor: pointer; font-size: 0.875rem; font-weight: 500; color: var(--muted); transition: all var(--transition); position: relative; margin-bottom: 3px; user-select: none; }
+        .nav-item:hover { background: rgba(255,255,255,0.05); color: var(--white); transform: translateX(3px); }
+        .nav-item.active { background: linear-gradient(90deg, rgba(0,212,170,0.15) 0%, rgba(0,212,170,0.04) 100%); color: var(--teal); border: 1px solid rgba(0,212,170,0.2); }
+        .nav-item.active::before { content: ''; position: absolute; left: -1px; top: 50%; transform: translateY(-50%); height: 60%; width: 3px; background: var(--teal); border-radius: 0 3px 3px 0; box-shadow: 0 0 12px rgba(0,212,170,0.4); }
+        .nav-item .nav-icon { font-size: 1rem; width: 22px; text-align: center; }
+        .sidebar-footer { padding: 14px 12px; border-top: 1px solid var(--border); }
+        .sidebar-user { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: var(--radius-sm); cursor: pointer; transition: all var(--transition); }
+        .sidebar-user:hover { background: var(--red-dim); }
+        .sidebar-user:hover .sidebar-user-info .name { color: var(--red); }
+        .avatar { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 700; background:var(--gold); color:var(--navy); flex-shrink: 0; }
+        .sidebar-user-info { flex: 1; min-width: 0; }
+        .sidebar-user-info .name { font-size: 0.85rem; font-weight: 600; color: var(--white); transition: color var(--transition); }
+        .sidebar-user-info .role { font-size: 0.7rem; color:var(--gold); margin-top: 1px; }
+
+        /* ── MAIN CONTENT ── */
+        .main-content { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+        .topbar { height: 60px; background: rgba(10,18,33,0.85); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 28px; position: sticky; top: 0; z-index: 50; }
+        .topbar-title { font-size: 0.82rem; font-weight: 500; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; display: flex; align-items: center; gap: 10px; }
+        .topbar-title::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 10px var(--teal); animation: pulse-dot 2s ease-in-out infinite; }
+        @keyframes pulse-dot { 0%, 100% { opacity: 1; box-shadow: 0 0 10px var(--teal); } 50% { opacity: 0.5; box-shadow: 0 0 4px var(--teal); } }
+        .page-content { padding: 28px; flex: 1; }
+        section { animation: section-enter 0.35s ease forwards; }
+        @keyframes section-enter { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ── CARDS & TABLES ── */
+        .card { background: linear-gradient(145deg, rgba(26,39,64,0.9) 0%, rgba(17,30,53,0.9) 100%); border: 1px solid var(--border); border-radius: var(--radius); backdrop-filter: blur(24px); box-shadow: 0 4px 6px rgba(0,0,0,0.2), 0 24px 48px rgba(0,0,0,0.25); overflow: hidden; }
+        .card-header-row { padding: 18px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+        .card-header-row .card-title-group h3 { font-size: 1rem; font-weight: 700; color: var(--white); }
+        .card-header-row .card-title-group span { font-size: 0.8rem; color: var(--muted); display: block; margin-top: 2px; }
+        .table-wrap { overflow-x: auto; scrollbar-width: thin; scrollbar-color: var(--slate) transparent; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.855rem; }
+        thead th { padding: 13px 20px; text-align: left; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); background: rgba(0,0,0,0.15); border-bottom: 1px solid var(--border); white-space: nowrap; }
+        tbody tr { border-bottom: 1px solid rgba(255,255,255,0.04); transition: background var(--transition), transform var(--transition); opacity: 0; transform: translateY(8px); animation: row-in 0.35s forwards; }
+        @keyframes row-in { to { opacity: 1; transform: translateY(0); } }
+        tbody tr:hover { background: rgba(255,255,255,0.04); transform: translateX(3px); }
+        tbody td { padding: 14px 20px; color: rgba(240,244,255,0.8); vertical-align: middle; line-height: 1.4; }
+
+        /* ── BADGES & BUTTONS ── */
+        .badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 100px; font-size: 0.72rem; font-weight: 600; text-transform: uppercase; white-space: nowrap; }
+        .badge-teal { background: var(--teal-dim); color: var(--teal); border: 1px solid rgba(0,212,170,0.25); }
+        .badge-gold { background: var(--gold-dim); color: var(--gold); border: 1px solid rgba(245,200,66,0.25); }
+        .badge-red { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,77,109,0.25); }
+        .badge-blue { background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(77,159,255,0.25); }
+        .badge-muted { background: rgba(90,112,153,0.12); color: var(--muted); border: 1px solid rgba(90,112,153,0.2); }
+        .badge-violet { background: var(--violet-dim); color: var(--violet); border: 1px solid rgba(167,139,250,0.25); }
+
+        .btn-primary { display: inline-flex; align-items: center; gap: 7px; padding: 9px 18px; border-radius: var(--radius-sm); background: linear-gradient(135deg, var(--violet) 0%, #7c3aed 100%); color: #fff; font-family: var(--sans); font-size: 0.82rem; font-weight: 600; border: none; cursor: pointer; transition: all 0.2s; white-space: nowrap; box-shadow: 0 4px 16px rgba(167,139,250,0.3); }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(167,139,250,0.45); filter: brightness(1.1); }
+        
+        .action-btn { display: inline-flex; align-items: center; gap: 5px; padding: 5px 11px; border-radius: 6px; font-family: var(--sans); font-size: 0.72rem; font-weight: 600; border: 1px solid transparent; cursor: pointer; transition: all 0.2s; background: transparent; margin-right: 4px; }
+        .action-btn-danger { color: var(--red); border-color: rgba(255,77,109,0.3); background: var(--red-dim); }
+        .action-btn-danger:hover { background: rgba(255,77,109,0.22); transform: translateY(-1px); }
+        .action-btn-activate { color: var(--teal); border-color: rgba(0,212,170,0.3); background: var(--teal-dim); }
+        .action-btn-activate:hover { background: rgba(0,212,170,0.22); transform: translateY(-1px); }
+
+        .btn-refresh { display: inline-flex; align-items: center; gap: 7px; padding: 8px 16px; border-radius: var(--radius-sm); background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--muted); font-family: var(--sans); font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+        .btn-refresh:hover { background: var(--teal-dim); border-color: rgba(0,212,170,0.3); color: var(--teal); transform: translateY(-1px); }
+        .btn-refresh.spinning .refresh-icon { animation: spin 0.65s forwards; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        /* Typography */
+        .cell-mono { font-family: var(--mono); font-size: 0.8rem; color: var(--white); }
+        .cell-bold { font-weight: 600; color: var(--white); }
+        .cell-teal { color: var(--teal); font-weight: 700; }
+        .cell-gold { color: var(--gold); font-weight: 700; }
+        .cell-red { color: var(--red); font-weight: 700; }
+        .penalty-pts { font-size: 1.15rem; font-weight: 800; color: var(--red); font-family: var(--mono); }
+        .rate-pill { display: inline-flex; background: var(--teal-dim); color: var(--teal); border: 1px solid rgba(0,212,170,0.25); border-radius: 100px; padding: 4px 12px; font-size: 0.8rem; font-weight: 700; font-family: var(--mono); }
+        .amount-cell { font-weight: 700; font-family: var(--mono); color: var(--white); font-size: 0.9rem; }
+
+        /* Card top borders */
+        #sec-master .card { border-top: 3px solid var(--teal); }
+        #sec-performance .card { border-top: 3px solid var(--gold); }
+        #sec-risk .card { border-top: 3px solid var(--red); }
+        #sec-finance .card { border-top: 3px solid var(--blue); }
+        #sec-staff .card { border-top: 3px solid var(--violet); }
+
+        /* Skeletons & States */
+        @keyframes shimmer { 0% { background-position: -700px 0; } 100% { background-position: 700px 0; } }
+        .skeleton-row td { opacity: 1 !important; transform: none !important; animation: none !important; border-bottom: 1px solid rgba(255,255,255,0.04); }
+        .skel { height: 14px; border-radius: 6px; background: linear-gradient(90deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.04) 100%); background-size: 700px 100%; animation: shimmer 1.4s infinite linear; }
+        .skel-sm { width: 60px; } .skel-md { width: 110px; } .skel-lg { width: 160px; } .skel-pill { height: 24px; width: 80px; border-radius: 100px; }
+        .empty-state { padding: 52px 20px; text-align: center; } .empty-state-icon { font-size: 2.5rem; margin-bottom: 12px; opacity: 0.4; } .empty-state-text { color: var(--muted); font-size: 0.9rem; }
+        .error-state { padding: 40px 20px; text-align: center; color: var(--red); font-size: 0.875rem; }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--slate-2); border-radius: 3px; }
+
+        /* ── MODAL STYLES ── */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-content { background: var(--navy-2); border: 1px solid var(--border); border-radius: 16px; width: 100%; max-width: 450px; max-height: 90vh; overflow-y: auto; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); animation: section-enter 0.3s forwards; }
+        .modal-content::-webkit-scrollbar { width: 6px; } .modal-content::-webkit-scrollbar-track { background: var(--navy-2); } .modal-content::-webkit-scrollbar-thumb { background: var(--slate-2); border-radius: 10px; }
+        .modal-header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; background: var(--navy-2); z-index: 10; }
+        .modal-header h3 { font-size: 1.1rem; color: var(--white); font-weight: 600; margin:0; }
+        .close-btn { background: none; border: none; color: var(--muted); font-size: 1.5rem; cursor: pointer; line-height: 1; }
+        .close-btn:hover { color: var(--red); }
+        .modal-body { padding: 24px; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 8px; font-weight: 500; }
+        .form-input { width: 100%; padding: 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--white); font-family: var(--sans); font-size: 0.9rem; outline: none; transition: all 0.2s; }
+        .form-input:focus { border-color: var(--violet); box-shadow: 0 0 0 3px rgba(167,139,250,0.15); }
+        .form-input option { background: var(--navy-2); color: var(--white); }
+        .modal-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 12px; background: rgba(0,0,0,0.2); position: sticky; bottom: 0; z-index: 10; }
+        
+        .dynamic-role-section { background: rgba(0,0,0,0.2); padding: 16px; border-radius: 10px; border: 1px dashed rgba(255,255,255,0.05); margin-top: 10px; animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from{opacity:0; transform:translateY(-5px);} to{opacity:1; transform:translateY(0);} }
+    </style>
+</head>
+<body>
+<div class="app-shell">
+
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">👑</div>
+      <div class="logo-text"><strong>Punjab DLMS</strong><span>Admin Portal</span></div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Database Analytics</div>
+      <div class="nav-item active" id="nav-master" onclick="showSection('master',this); loadMasterView();"><span class="nav-icon">🗄️</span>Master Applicant View</div>
+      <div class="nav-item" id="nav-performance" onclick="showSection('performance',this); loadPerformanceView();"><span class="nav-icon">📈</span>Center Performance</div>
+      <div class="nav-item" id="nav-risk" onclick="showSection('risk',this); loadRiskView();"><span class="nav-icon">🚨</span>High-Risk Drivers</div>
+      <div class="nav-item" id="nav-finance" onclick="showSection('finance',this); loadFinanceView();"><span class="nav-icon">💰</span>Financial Recon</div>
+      <div class="nav-section-label" style="margin-top: 22px;">System Management</div>
+      <div class="nav-item" id="nav-audit" onclick="showSection('audit',this); loadGlobalAuditLogs();">
+		    <span class="nav-icon">📡</span>Global Audit Log
+		</div>
+      <div class="nav-item" id="nav-staff" onclick="showSection('staff',this); loadStaffView();"><span class="nav-icon">👥</span>Staff Access Control</div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-user" onclick="logout()">
+        <div class="avatar">S</div>
+        <div class="sidebar-user-info"><div class="name">System Admin</div><div class="role">Super User</div></div>
+        <span style="color:var(--muted);font-size:.8rem;">⇥</span>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main-content">
+    <header class="topbar"><div class="topbar-title">Oracle Database Analytics Console</div></header>
+    <div class="page-content">
+
+      <section id="sec-master">
+        <div class="card">
+          <div class="card-header-row">
+            <div class="card-title-group"><h3>Master Applicant View</h3><span>Aggregating Applicant, User, Permit, and License tables.</span></div>
+            <button class="btn-refresh" onclick="triggerRefresh(this, loadMasterView)"><i class="refresh-icon">↻</i> Refresh</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>CNIC</th><th>Category</th><th>Current Stage</th><th>Learner Permit</th><th>Final License</th></tr></thead>
+              <tbody id="tbody-master"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="sec-performance" style="display:none;">
+        <div class="card">
+          <div class="card-header-row">
+            <div class="card-title-group"><h3>Test Center Performance</h3><span>Live GROUP BY aggregations from Oracle Database.</span></div>
+            <button class="btn-refresh" onclick="triggerRefresh(this, loadPerformanceView)"><i class="refresh-icon">↻</i> Refresh</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Test Center</th><th>Total Tests</th><th>Passed</th><th>Failed</th><th>Pass Rate</th></tr></thead>
+              <tbody id="tbody-performance"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="sec-risk" style="display:none;">
+        <div class="card">
+          <div class="card-header-row">
+            <div class="card-title-group"><h3>High-Risk Drivers (20+ Points)</h3><span>Traffic Violations mapped to active driving licenses.</span></div>
+            <button class="btn-refresh" onclick="triggerRefresh(this, loadRiskView)"><i class="refresh-icon">↻</i> Refresh</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>License #</th><th>Driver Name</th><th>CNIC</th><th>Penalty Points</th><th>Status</th></tr></thead>
+              <tbody id="tbody-risk"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="sec-finance" style="display:none;">
+        <div class="card">
+          <div class="card-header-row">
+            <div class="card-title-group"><h3>Financial Reconciliation</h3><span>Secure financial view with masked personal data.</span></div>
+            <button class="btn-refresh" onclick="triggerRefresh(this, loadFinanceView)"><i class="refresh-icon">↻</i> Refresh</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Challan No</th><th>Type</th><th>Amount</th><th>Status</th><th>Payer CNIC</th></tr></thead>
+              <tbody id="tbody-finance"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+      
+      <section id="sec-audit" style="display:none;">
+        <div class="card">
+          <div class="card-header-row">
+            <div class="card-title-group">
+              <h3><span style="font-size: 1.2rem; margin-right: 8px;">📡</span> Global Officer Audit Log</h3>
+              <span>Tracking all actions performed by officers across the system.</span>
+            </div>
+            <button class="btn-refresh" onclick="triggerRefresh(this, loadGlobalAuditLogs)">
+              <i class="refresh-icon">↻</i> Refresh Feed
+            </button>
+          </div>
+          
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date & Time</th>
+                  <th>Module</th>
+                  <th>Officer ID</th>
+                  <th>Action Taken</th>
+                  <th>Detailed Description</th>
+                </tr>
+              </thead>
+              <tbody id="globalAuditBody">
+                <tr><td colspan="5" style="text-align:center; padding:20px;">Loading audit logs...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="sec-staff" style="display:none;">
+        <div class="card">
+          <div class="card-header-row">
+            <div class="card-title-group"><h3>Staff Access Control</h3><span>Manage roles and account status for all government officers.</span></div>
+            <div style="display:flex; gap:8px;">
+              <button class="btn-refresh" onclick="triggerRefresh(this, loadStaffView)"><i class="refresh-icon">↻</i> Refresh</button>
+              <button class="btn-primary" onclick="openAddModal()">＋ Add New Officer</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Officer Name</th><th>Email</th><th>Assigned Role</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody id="tbody-staff"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<div id="staffModal" class="modal-overlay" style="display:none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Add New Officer</h3>
+            <button class="close-btn" onclick="closeModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <div id="modalError" style="display:none; background:rgba(255,77,109,0.1); border:1px solid rgba(255,77,109,0.35); border-radius:8px; color:var(--red); font-size:0.82rem; padding:11px 14px; margin-bottom:18px;"></div>
+
+            <div class="form-group"><label>Full Name</label><input type="text" id="staffName" class="form-input" placeholder="e.g. Tariq Mahmood" autocomplete="off"></div>
+            <div class="form-group"><label>Email Address</label><input type="email" id="staffEmail" class="form-input" placeholder="officer@dlms.gov.pk" autocomplete="off"></div>
+            <div class="form-group"><label>Password</label><input type="password" id="staffPassword" class="form-input" placeholder="Enter a secure password"></div>
+			<div class="form-group">
+			    <label>CNIC Number</label>
+			    <input type="text" id="staffCnic" class="form-input" placeholder="e.g. 37405-1111111-1" autocomplete="off" maxlength="15">
+			</div>
+            <div class="form-group" style="margin-top:20px; padding-top:15px; border-top:1px solid var(--border);">
+                <label style="color:var(--teal);">System Role</label>
+                <select id="staffRole" class="form-input" onchange="toggleRoleFields()" style="border-color:rgba(0,212,170,0.3); background:rgba(0,212,170,0.05);">
+                    <option value="LICENSING_OFFICER">Licensing Officer</option>
+                    <option value="TESTING_OFFICER">Testing Officer</option>
+                    <option value="TRAFFIC_POLICE">Traffic Police</option>
+                </select>
+            </div>
+
+            <div id="fields-licensing" class="dynamic-role-section">
+                <div class="form-group" style="margin:0;"><label>Assigned Department</label><input type="text" id="staffDepartment" class="form-input" placeholder="e.g. Learner Permits"></div>
+            </div>
+
+            <div id="fields-testing" class="dynamic-role-section" style="display:none;">
+                <div class="form-group" style="margin:0;"><label>Assigned Test Center</label><input type="text" id="staffCenter" class="form-input" placeholder="e.g. Lahore Test Center"></div>
+            </div>
+
+            <div id="fields-police" class="dynamic-role-section" style="display:none;">
+                <div class="form-group"><label>Badge Number</label><input type="text" id="staffBadge" class="form-input" placeholder="e.g. B-9912"></div>
+                <div class="form-group"><label>Rank</label><input type="text" id="staffRank" class="form-input" placeholder="e.g. Inspector"></div>
+                <div class="form-group" style="margin:0;"><label>Station Name</label><input type="text" id="staffStation" class="form-input" placeholder="e.g. Gulberg Traffic HQ"></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-refresh" onclick="closeModal()">Cancel</button>
+            <button class="btn-primary" onclick="saveStaff()">Save Officer</button>
+        </div>
+    </div>
+</div>
+
+<div id="customConfirmModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px); z-index:10000; align-items:center; justify-content:center;">
+  <div style="background:#0f1729; border:1px solid rgba(0,212,170,0.4); border-radius:20px; max-width:400px; width:90%; padding:24px; box-shadow:0 20px 40px rgba(0,0,0,0.5);">
+    <h3 id="confirmModalTitle" style="color:white; font-size:1.3rem; margin-bottom:12px;">Confirm Action</h3>
+    <p id="confirmModalMessage" style="color:#b0c4de; margin-bottom:24px; line-height:1.5;">Are you sure?</p>
+    <div style="display:flex; gap:12px; justify-content:flex-end;">
+      <button id="confirmModalCancelBtn" style="background:#1e2d56; border:none; color:white; padding:8px 20px; border-radius:10px; cursor:pointer;">Cancel</button>
+      <button id="confirmModalOkBtn" style="background:#00d4aa; border:none; color:#0a0f1e; padding:8px 20px; border-radius:10px; cursor:pointer; font-weight:700;">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────
+function skeletonRows(c, t = 6) { return Array.from({length:t},()=>`<tr class="skeleton-row">${Array.from({length:c},()=>`<td><div class="skel"></div></td>`).join('')}</tr>`).join(''); }
+function emptyState(c, i, m) { return `<tr><td colspan="${c}"><div class="empty-state"><div class="empty-state-icon">${i}</div><div class="empty-state-text">${m}</div></div></td></tr>`; }
+function errorState(c) { return `<tr><td colspan="${c}"><div class="error-state">Failed to load data.</div></td></tr>`; }
+function staggerRows(tb) { tb.querySelectorAll('tr:not(.skeleton-row)').forEach((tr, i) => tr.style.animationDelay = `${i * 55}ms`); }
+
+function showSection(name, navEl) {
+    document.querySelectorAll('[id^="sec-"]').forEach(s => s.style.display = 'none');
+    const sec = document.getElementById('sec-' + name);
+    sec.style.display = 'block'; sec.style.animation = 'none'; sec.offsetHeight; sec.style.animation = '';
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    if (navEl) navEl.classList.add('active');
+}
+
+function logout() { fetch('/api/auth/logout', { method: 'POST' }).finally(() => window.location.href = '/login'); }
+document.addEventListener('DOMContentLoaded', () => loadMasterView());
+
+// ─────────────────────────────────────────────────────────────────
+// VIEWS (Master, Performance, Risk, Finance)
+// ─────────────────────────────────────────────────────────────────
+async function loadMasterView() {
+    const tb = document.getElementById('tbody-master'); tb.innerHTML = skeletonRows(5);
+    try {
+        const res = await fetch('/api/admin/analytics/master'); const data = await res.json();
+        if(!data.length) return tb.innerHTML = emptyState(5, '🗂️', 'No records found.');
+        tb.innerHTML = data.map(r => `<tr><td><span class="cell-mono">${r.cnic}</span></td><td><span class="cell-bold">${r.licenseCategory}</span></td><td><span class="badge badge-teal">${r.currentStage}</span></td><td><span class="cell-mono" style="color:var(--blue);">${r.learnerPermitNo||'N/A'}</span></td><td><span class="badge badge-gold">${r.licenseNumber||'PENDING'}</span></td></tr>`).join(''); staggerRows(tb);
+    } catch(e) { tb.innerHTML = errorState(5); }
+}
+
+async function loadPerformanceView() {
+    const tb = document.getElementById('tbody-performance'); tb.innerHTML = skeletonRows(5);
+    try {
+        const res = await fetch('/api/admin/analytics/performance'); const data = await res.json();
+        if(!data.length) return tb.innerHTML = emptyState(5, '📊', 'No data available.');
+        tb.innerHTML = data.map(r => `<tr><td><span class="cell-bold">${r.testCenter}</span></td><td><span class="cell-mono">${r.totalTestsConducted}</span></td><td><span class="cell-teal">${r.totalPassed}</span></td><td><span class="cell-red">${r.totalFailed}</span></td><td><span class="rate-pill">${r.passRatePercentage}%</span></td></tr>`).join(''); staggerRows(tb);
+    } catch(e) { tb.innerHTML = errorState(5); }
+}
+
+async function loadRiskView() {
+    const tb = document.getElementById('tbody-risk'); tb.innerHTML = skeletonRows(5);
+    try {
+        const res = await fetch('/api/admin/analytics/high-risk'); const data = await res.json();
+        if(!data.length) return tb.innerHTML = emptyState(5, '✅', 'No high-risk drivers.');
+        tb.innerHTML = data.map(r => `<tr><td><span class="cell-gold cell-mono">${r.licenseNumber}</span></td><td><span class="cell-bold">${r.fullNameEn}</span></td><td><span class="cell-mono">${r.cnic}</span></td><td><span class="penalty-pts">${r.totalPenaltyPoints}</span></td><td><span class="badge badge-red">${r.licenseStatus}</span></td></tr>`).join(''); staggerRows(tb);
+    } catch(e) { tb.innerHTML = errorState(5); }
+}
+
+async function loadFinanceView() {
+    const tb = document.getElementById('tbody-finance'); tb.innerHTML = skeletonRows(5);
+    try {
+        const res = await fetch('/api/admin/analytics/finance'); const data = await res.json();
+        if(!data.length) return tb.innerHTML = emptyState(5, '🧾', 'No financial records.');
+        tb.innerHTML = data.map(r => `<tr><td><span class="cell-mono">${r.challanNo}</span></td><td>${r.paymentType}</td><td><span class="amount-cell">Rs. ${r.amount}</span></td><td><span class="badge badge-teal">${r.paymentStatus}</span></td><td><span class="cell-mono">${r.payerCnic}</span></td></tr>`).join(''); staggerRows(tb);
+    } catch(e) { tb.innerHTML = errorState(5); }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// STAFF VIEW (TABLE)
+// ─────────────────────────────────────────────────────────────────
+async function loadStaffView() {
+    const tb = document.getElementById('tbody-staff'); tb.innerHTML = skeletonRows(5);
+    try {
+        const res = await fetch('/api/admin/staff');
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        if (!data.length) return tb.innerHTML = emptyState(5, '👥', 'No staff members found.');
+        
+        const roleLabels = { LICENSING_OFFICER: 'Licensing Officer', TESTING_OFFICER: 'Testing Officer', TRAFFIC_POLICE: 'Traffic Police' };
+        tb.innerHTML = data.map(r => {
+            const dbId = r.userId || r.id;
+            const isActive = r.accountStatus === 'ACTIVE';
+            const actionBtn = isActive
+                ? `<button class="action-btn action-btn-danger" data-id="${dbId}" data-status="ACTIVE" data-name="${r.fullNameEn}" onclick="openSuspendModal(this)">🔒 Suspend</button>`
+                : `<button class="action-btn action-btn-activate" data-id="${dbId}" data-status="SUSPENDED" data-name="${r.fullNameEn}" onclick="openSuspendModal(this)">✅ Unsuspend</button>`;
+            
+            return `<tr><td><span class="cell-bold">${r.fullNameEn||'—'}</span></td><td><span class="cell-mono">${r.email||'—'}</span></td><td><span class="badge badge-violet">${roleLabels[r.role]||r.role}</span></td><td>${isActive ? '<span class="badge badge-teal">ACTIVE</span>' : '<span class="badge badge-red">SUSPENDED</span>'}</td><td>${actionBtn}</td></tr>`;
+        }).join('');
+        staggerRows(tb);
+    } catch(e) { tb.innerHTML = errorState(5); showToast('Failed to load staff data.', 'error'); }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// SUSPEND MODAL LOGIC
+// ─────────────────────────────────────────────────────────────────
+let pendingSuspendData = null;
+
+function openSuspendModal(btn) {
+    const id = btn.dataset.id; const currentStatus = btn.dataset.status; const name = btn.dataset.name || 'this officer';
+    const isSuspending = (currentStatus === 'ACTIVE');
+    document.getElementById('confirmModalTitle').innerHTML = isSuspending ? 'Suspend Officer' : 'Unsuspend Officer';
+    document.getElementById('confirmModalMessage').innerHTML = isSuspending ? `Are you sure you want to suspend <strong>${name}</strong>?` : `Are you sure you want to unsuspend <strong>${name}</strong>?`;
+    document.getElementById('customConfirmModal').style.display = 'flex';
+    pendingSuspendData = { id, currentStatus, btn };
+}
+
+function closeConfirmModal() {
+    document.getElementById('customConfirmModal').style.display = 'none';
+    pendingSuspendData = null;
+}
+
+async function executeSuspend() {
+    if (!pendingSuspendData) return;
+    const okBtn = document.getElementById('confirmModalOkBtn');
+    const originalText = okBtn.innerText; okBtn.disabled = true; okBtn.innerText = 'Processing...';
+    try {
+        const res = await fetch(`/api/admin/staff/${pendingSuspendData.id}/suspend`, { method: 'PUT' });
+        if (res.ok) {
+            showToast('Officer status updated.', 'success');
+            closeConfirmModal(); loadStaffView();
+        } else {
+            showToast('Error: ' + await res.text(), 'error');
+            closeConfirmModal();
+        }
+    } catch(err) { showToast('Network error.', 'error'); closeConfirmModal(); } 
+    finally { okBtn.disabled = false; okBtn.innerText = originalText; }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ADD NEW OFFICER MODAL LOGIC (DYNAMIC FIELDS)
+// ─────────────────────────────────────────────────────────────────
+function toggleRoleFields() {
+    const role = document.getElementById('staffRole').value;
+    document.getElementById('fields-licensing').style.display = 'none';
+    document.getElementById('fields-testing').style.display = 'none';
+    document.getElementById('fields-police').style.display = 'none';
+
+    if (role === 'LICENSING_OFFICER') document.getElementById('fields-licensing').style.display = 'block';
+    else if (role === 'TESTING_OFFICER') document.getElementById('fields-testing').style.display = 'block';
+    else if (role === 'TRAFFIC_POLICE') document.getElementById('fields-police').style.display = 'block';
+}
+
+function openAddModal() {
+    document.getElementById('staffName').value = '';
+    document.getElementById('staffEmail').value = '';
+    document.getElementById('staffPassword').value = '';
+    document.getElementById('staffRole').value = 'LICENSING_OFFICER';
+    toggleRoleFields();
+    
+    document.getElementById('staffDepartment').value = '';
+    document.getElementById('staffCenter').value = '';
+    document.getElementById('staffBadge').value = '';
+    document.getElementById('staffRank').value = '';
+    document.getElementById('staffStation').value = '';
+    document.getElementById('staffCnic').value = '';
+
+    document.getElementById('modalError').style.display = 'none';
+    document.getElementById('staffModal').style.display = 'flex';
+}
+
+function closeModal() {
+    document.getElementById('staffModal').style.display = 'none';
+}
+
+async function saveStaff() {
+    const name = document.getElementById('staffName').value.trim();
+    const cnic = document.getElementById('staffCnic').value.trim(); // Captured
+    const email = document.getElementById('staffEmail').value.trim();
+    const role = document.getElementById('staffRole').value;
+    const password = document.getElementById('staffPassword').value.trim();
+    const errorBox = document.getElementById('modalError');
+    
+    errorBox.style.display = 'none';
+
+    // 1. ADDED 'cnic' TO THE PAYLOAD
+    const payload = { 
+        fullNameEn: name,
+        cnic: cnic,        // <-- This is the missing piece
+        email: email, 
+        password: password, 
+        role: role 
+    };
+
+    // 2. UPDATED VALIDATION TO REQUIRE CNIC
+    if (!name || !email || !password || !cnic) {
+        errorBox.textContent = '⚠ Name, CNIC, Email, and Password are required.';
+        errorBox.style.display = 'block'; 
+        return;
+    }
+
+    // Role-specific fields (Keep your existing dynamic logic)
+    if (role === 'LICENSING_OFFICER') {
+        payload.department = document.getElementById('staffDepartment').value.trim() || 'General';
+    } else if (role === 'TESTING_OFFICER') {
+        payload.assignedCenter = document.getElementById('staffCenter').value.trim() || 'Main Center';
+    } else if (role === 'TRAFFIC_POLICE') {
+        payload.badgeNumber = document.getElementById('staffBadge').value.trim() || 'Unknown';
+        payload.rank = document.getElementById('staffRank').value.trim() || 'Constable';
+        payload.stationName = document.getElementById('staffStation').value.trim() || 'Unknown';
+    }
+
+    const saveBtn = document.querySelector('#staffModal .btn-primary');
+    saveBtn.disabled = true; 
+    saveBtn.textContent = 'Saving…';
+
+    try {
+        const res = await fetch('/api/admin/staff', { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify(payload) 
+        });
+        
+        if (res.ok) {
+            closeModal(); 
+            showToast('New officer added successfully!', 'success'); 
+            loadStaffView();
+        } else {
+            errorBox.textContent = '⚠ Backend Error: ' + (await res.text() || 'Failed to save.');
+            errorBox.style.display = 'block';
+        }
+    } catch (e) {
+        errorBox.textContent = '⚠ Network Error: Cannot reach server.';
+        errorBox.style.display = 'block';
+    } finally {
+        saveBtn.disabled = false; 
+        saveBtn.textContent = 'Save Officer';
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// MISC HANDLERS (Toasts, Click Outside)
+// ─────────────────────────────────────────────────────────────────
+function showToast(msg, type='success') {
+    const existing = document.getElementById('dlms-toast'); if (existing) existing.remove();
+    const col = type==='success' ? 'var(--teal)' : 'var(--red)';
+    const toast = document.createElement('div'); toast.id = 'dlms-toast';
+    toast.innerHTML = `<span style="font-size:1rem;">${type==='success'?'✓':'✕'}</span> ${msg}`;
+    Object.assign(toast.style, { position:'fixed', bottom:'28px', right:'28px', zIndex:'9999', display:'flex', alignItems:'center', gap:'10px', padding:'14px 22px', borderRadius:'10px', background:'rgba(13,22,39,0.97)', border:`1px solid ${col}`, color:col, fontFamily:'var(--sans)', fontSize:'0.875rem', fontWeight:'600', boxShadow:`0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px ${col}22`, backdropFilter:'blur(20px)', transform:'translateY(20px)', opacity:'0', transition:'all 0.3s' });
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => { toast.style.transform='translateY(0)'; toast.style.opacity='1'; });
+    setTimeout(() => { toast.style.transform='translateY(20px)'; toast.style.opacity='0'; setTimeout(()=>toast.remove(), 300); }, 3500);
+}
+
+//Call this function when the admin dashboard loads
+async function loadGlobalAuditLogs() {
+    const tbody = document.getElementById('globalAuditBody');
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">Fetching logs...</td></tr>';
+
+    try {
+        const res = await fetch('/api/admin/audit-logs');
+        const data = await res.json();
+
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--muted);">No officer activities recorded yet.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = data.map(log => {
+            // Oracle returns columns in UPPERCASE
+            const date = log.ACTION_DATE ? new Date(log.ACTION_DATE).toLocaleString('en-PK', {
+                day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+            }) : '—';
+            
+            const module = log.MODULE || 'UNKNOWN';
+            const officerId = log.OFFICER_ID || '—';
+            const action = log.ACTION_TYPE || '—';
+            const desc = log.DESCRIPTION || '—';
+
+            // Determine badge colors based on module
+            let badgeStyle = 'background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2);';
+            if (module === 'ENFORCEMENT') badgeStyle = 'background: rgba(255,45,85,0.15); color: #ff2d55; border: 1px solid rgba(255,45,85,0.3);';
+            if (module === 'FINANCE') badgeStyle = 'background: rgba(0,212,170,0.15); color: var(--teal); border: 1px solid rgba(0,212,170,0.3);';
+            if (module === 'MEDICAL') badgeStyle = 'background: rgba(255,184,48,0.15); color: var(--amber); border: 1px solid rgba(255,184,48,0.3);';
+            if (module === 'TESTING') badgeStyle = 'background: rgba(56,189,248,0.15); color: #38bdf8; border: 1px solid rgba(56,189,248,0.3);';
+
+            return `
+                <tr style="border-bottom: 1px solid var(--border); transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">
+                    <td style="padding: 14px 12px; font-size: 0.85rem; color: var(--text-2); white-space: nowrap;">${date}</td>
+                    <td style="padding: 14px 12px;">
+                        <span style="padding: 4px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; ${badgeStyle}">
+                            ${module}
+                        </span>
+                    </td>
+                    <td style="padding: 14px 12px; font-family: monospace; font-weight: bold; color: var(--cyan); font-size: 0.95rem;">
+                        #${officerId}
+                    </td>
+                    <td style="padding: 14px 12px; font-size: 0.85rem; font-weight: 600; color: var(--white);">
+                        ${action.replace(/_/g, ' ')}
+                    </td>
+                    <td style="padding: 14px 12px; font-size: 0.85rem; color: var(--text-2); line-height: 1.5; max-width: 400px;">
+                        ${desc}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:20px; color:#ff4d4d;">Failed to load audit logs: ${e.message}</td></tr>`;
+    }
+}
+
+// Don't forget to call loadGlobalAuditLogs() when the page loads!
+document.addEventListener('DOMContentLoaded', () => {
+    loadGlobalAuditLogs();
+});
+
+function triggerRefresh(btn, loaderFn) {
+    if(btn.classList.contains('spinning')) return;
+    btn.classList.add('spinning'); btn.disabled=true;
+    btn.addEventListener('animationend', () => { btn.classList.remove('spinning'); btn.disabled=false; }, {once:true}); loaderFn();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('confirmModalCancelBtn').onclick = closeConfirmModal;
+    document.getElementById('confirmModalOkBtn').onclick = executeSuspend;
+    document.getElementById('customConfirmModal').addEventListener('click', e => { if(e.target===document.getElementById('customConfirmModal')) closeConfirmModal(); });
+    document.getElementById('staffModal').addEventListener('click', e => { if(e.target===document.getElementById('staffModal')) closeModal(); });
+});
+</script>
+</body>
+</html>

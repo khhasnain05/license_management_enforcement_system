@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>DLMS — Create Account</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+<style>
+body{background:var(--navy);display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
+#bg-canvas{position:fixed;inset:0;z-index:0;pointer-events:none;}
+
+.register-wrap{
+  position:relative;z-index:1;
+  width:100%;max-width:860px;
+  display:grid;grid-template-columns:300px 1fr;
+  background:rgba(15,23,41,.92);
+  border:1px solid var(--border);
+  border-radius:var(--radius-xl);
+  overflow:hidden;
+  box-shadow:0 32px 80px rgba(0,0,0,.5);
+  backdrop-filter:blur(20px);
+}
+
+/* ── LEFT PANEL ── */
+.reg-left{
+  background:linear-gradient(160deg,var(--navy-3),var(--navy-4));
+  border-right:1px solid var(--border);
+  padding:36px 28px;
+  display:flex;flex-direction:column;
+}
+.reg-brand{display:flex;align-items:center;gap:12px;margin-bottom:40px;}
+.reg-brand .b-icon{width:42px;height:42px;background:linear-gradient(135deg,var(--teal),var(--teal-dim));border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;}
+.reg-brand .b-text strong{display:block;font-size:1rem;font-weight:700;color:var(--white);}
+.reg-brand .b-text span{font-size:.7rem;color:var(--muted);}
+
+/* Step tracker */
+.step-tracker{display:flex;flex-direction:column;gap:0;flex:1;}
+.st-item{display:flex;gap:14px;padding-bottom:28px;position:relative;}
+.st-item:last-child{padding-bottom:0;}
+.st-item:not(:last-child)::after{
+  content:'';position:absolute;left:15px;top:32px;
+  width:2px;height:calc(100% - 32px);background:var(--border);
+}
+.st-item.done:not(:last-child)::after{background:var(--teal);}
+.st-dot{
+  width:32px;height:32px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.75rem;font-weight:700;z-index:1;
+  transition:all .3s;
+}
+.st-dot.done   {background:var(--teal);color:var(--navy);}
+.st-dot.active {background:var(--teal-glass);color:var(--teal);border:2px solid var(--teal);animation:pulse 2s infinite;}
+.st-dot.pending{background:var(--navy);color:var(--muted);border:1px solid var(--border);}
+.st-info{padding-top:4px;}
+.st-info .st-title{font-size:.85rem;font-weight:600;color:var(--white);}
+.st-info .st-sub  {font-size:.72rem;color:var(--muted);margin-top:2px;line-height:1.4;}
+.st-item.active .st-info .st-title{color:var(--teal);}
+.st-item.pending .st-info .st-title{color:var(--muted);}
+
+.reg-login-link{margin-top:auto;padding-top:24px;border-top:1px solid var(--border);font-size:.78rem;color:var(--muted);}
+.reg-login-link a{color:var(--teal);font-weight:600;}
+
+/* ── RIGHT PANEL ── */
+.reg-right{padding:36px 40px;overflow-y:auto;max-height:90vh;}
+
+.reg-top{margin-bottom:28px;}
+.reg-top h2{font-size:1.4rem;font-weight:700;color:var(--white);margin-bottom:4px;}
+.reg-top p{font-size:.82rem;color:var(--muted);}
+
+/* Step panels */
+.step-panel{display:none;animation:fadeIn .3s ease;}
+.step-panel.active{display:block;}
+
+/* Grid forms */
+.form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+
+/* CNIC field formatting */
+.cnic-input{font-family:var(--mono);letter-spacing:.06em;}
+
+/* Password strength */
+.pass-strength{margin-top:8px;}
+.ps-bar{height:4px;border-radius:2px;background:var(--navy-3);overflow:hidden;margin-bottom:6px;}
+.ps-fill{height:100%;border-radius:2px;transition:all .3s;width:0%;}
+.ps-label{font-size:.7rem;color:var(--muted);}
+
+/* Terms */
+.terms-box{
+  background:rgba(255,255,255,.02);border:1px solid var(--border);
+  border-radius:var(--r);padding:14px;max-height:160px;overflow-y:auto;
+  font-size:.75rem;color:var(--muted);line-height:1.7;margin-bottom:14px;
+}
+.terms-box::-webkit-scrollbar{width:4px;}
+.terms-box::-webkit-scrollbar-thumb{background:var(--border);}
+
+.check-agree{display:flex;align-items:flex-start;gap:10px;font-size:.8rem;color:var(--muted);cursor:pointer;margin-bottom:18px;}
+.check-agree input{accent-color:var(--teal);margin-top:2px;flex-shrink:0;}
+.check-agree a{color:var(--teal);}
+
+/* Step footer */
+.step-footer{display:flex;gap:10px;margin-top:24px;padding-top:20px;border-top:1px solid var(--border);}
+.step-indicator{font-size:.75rem;color:var(--muted);margin-left:auto;align-self:center;}
+
+/* Success screen */
+.success-screen{text-align:center;padding:40px 20px;}
+.success-icon{
+  width:80px;height:80px;background:rgba(34,197,94,.12);border:2px solid rgba(34,197,94,.3);
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:2rem;margin:0 auto 20px;animation:float 3s ease-in-out infinite;
+}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+
+@media(max-width:700px){
+  .register-wrap{grid-template-columns:1fr;}
+  .reg-left{display:none;}
+  .reg-right{max-height:unset;}
+  body{align-items:flex-start;}
+}
+</style>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+
+<div class="register-wrap">
+
+  <!-- ── LEFT: STEP TRACKER ── -->
+  <div class="reg-left">
+    <div class="reg-brand">
+      <div class="b-icon">🚗</div>
+      <div class="b-text"><strong>Punjab DLMS</strong><span>New Applicant Registration</span></div>
+    </div>
+
+    <div class="step-tracker" id="stepTracker"></div>
+
+    <div class="reg-login-link">
+      Already registered? <a href="/login">Sign in here</a>
+    </div>
+  </div>
+
+  <!-- ── RIGHT: FORM STEPS ── -->
+  <div class="reg-right">
+
+    <div class="reg-top">
+      <h2 id="stepTitle">Personal Information</h2>
+      <p id="stepDesc">Enter your details exactly as they appear on your CNIC.</p>
+    </div>
+
+    <div id="alertBox" style="display:none;margin-bottom:16px;"></div>
+
+    <!-- ── STEP 1: PERSONAL ── -->
+    <div class="step-panel active" id="step1">
+      <div class="form-row-2">
+        <div class="form-group">
+          <label class="form-label">Full Name (English) <span style="color:var(--red);">*</span></label>
+          <input type="text" class="form-control" id="fullNameEn" placeholder="Muhammad Ali Khan" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Full Name (Urdu)</label>
+          <input type="text" class="form-control" id="fullNameUr" placeholder="محمد علی خان" dir="rtl">
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-group">
+          <label class="form-label">Father's Name <span style="color:var(--red);">*</span></label>
+          <input type="text" class="form-control" id="fatherName" placeholder="Muhammad Ibrahim Khan" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">CNIC <span style="color:var(--red);">*</span></label>
+          <input type="text" class="form-control cnic-input" id="cnic" placeholder="35202-1234567-1" maxlength="15" oninput="formatCnic(this)" required>
+          <div style="font-size:.68rem;color:var(--muted);margin-top:4px;">Format: 35202-1234567-1</div>
+        </div>
+      </div>
+      <div class="form-row-3">
+        <div class="form-group">
+          <label class="form-label">Date of Birth <span style="color:var(--red);">*</span></label>
+          <input type="date" class="form-control" id="dob" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Gender <span style="color:var(--red);">*</span></label>
+          <select class="form-control" id="gender" required>
+            <option value="">Select...</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Blood Group</label>
+          <select class="form-control" id="bloodGroup">
+            <option value="">Select...</option>
+            <option>A+</option><option>A-</option>
+            <option>B+</option><option>B-</option>
+            <option>AB+</option><option>AB-</option>
+            <option>O+</option><option>O-</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-group">
+          <label class="form-label">District <span style="color:var(--red);">*</span></label>
+          <select class="form-control" id="district" required>
+            <option value="">Select district...</option>
+            <option>Lahore</option><option>Rawalpindi</option><option>Islamabad</option>
+            <option>Faisalabad</option><option>Multan</option><option>Gujranwala</option>
+            <option>Sialkot</option><option>Bahawalpur</option><option>Peshawar</option>
+            <option>Quetta</option><option>Karachi</option><option>Hyderabad</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Preferred Language</label>
+          <select class="form-control" id="prefLanguage">
+            <option value="EN">English</option>
+            <option value="UR">Urdu (اردو)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── STEP 2: CONTACT ── -->
+    <div class="step-panel" id="step2">
+      <div class="form-group">
+        <label class="form-label">Email Address <span style="color:var(--red);">*</span></label>
+        <div style="position:relative;">
+          <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:.9rem;pointer-events:none;">✉</span>
+          <input type="email" class="form-control" id="email" style="padding-left:36px;" placeholder="you@example.com" required>
+        </div>
+        <div style="font-size:.7rem;color:var(--muted);margin-top:5px;">Used for login and all DLMS notifications</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Mobile Number <span style="color:var(--red);">*</span></label>
+        <div style="position:relative;">
+          <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:.8rem;color:var(--muted);pointer-events:none;">📱</span>
+          <input type="tel" class="form-control" id="mobileNumber" style="padding-left:36px;font-family:var(--mono);" placeholder="03001234567" maxlength="11" pattern="[0-9]{11}" required>
+        </div>
+        <div style="font-size:.7rem;color:var(--muted);margin-top:5px;">11 digits starting with 03 — e.g. 03001234567</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Residential Address</label>
+        <textarea class="form-control" id="address" rows="3" placeholder="House No., Street, Area, City..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Alternate Contact (Optional)</label>
+        <input type="tel" class="form-control" id="altContact" style="font-family:var(--mono);" placeholder="03XX-XXXXXXX">
+      </div>
+      <div style="background:rgba(0,212,170,.06);border:1px solid var(--border-2);border-radius:var(--r);padding:12px;font-size:.78rem;color:var(--muted);">
+        <strong style="color:var(--teal);">📧 Verification email</strong> will be sent to your email address after registration.
+      </div>
+    </div>
+
+    <!-- ── STEP 3: SECURITY ── -->
+    <div class="step-panel" id="step3">
+      <div class="form-group">
+        <label class="form-label">Password <span style="color:var(--red);">*</span></label>
+        <div style="position:relative;">
+          <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);">🔒</span>
+          <input type="password" class="form-control" id="password" style="padding-left:36px;" placeholder="Create a strong password" oninput="checkPassStrength(this.value)" required>
+          <button type="button" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:.85rem;" onclick="togglePass('password')">👁</button>
+        </div>
+        <div class="pass-strength">
+          <div class="ps-bar"><div class="ps-fill" id="psFill"></div></div>
+          <div class="ps-label" id="psLabel">Enter a password</div>
+        </div>
+        <div style="font-size:.7rem;color:var(--muted);margin-top:6px;">
+          Must contain: uppercase, lowercase, number, special character (min 8 chars)
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Confirm Password <span style="color:var(--red);">*</span></label>
+        <div style="position:relative;">
+          <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);">🔒</span>
+          <input type="password" class="form-control" id="confirmPassword" style="padding-left:36px;" placeholder="Re-enter your password" oninput="checkPassMatch()" required>
+          <button type="button" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:.85rem;" onclick="togglePass('confirmPassword')">👁</button>
+        </div>
+        <div style="font-size:.72rem;margin-top:5px;" id="matchLabel"></div>
+      </div>
+      <div style="background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-top:6px;">
+        <div style="font-size:.78rem;font-weight:600;color:var(--white);margin-bottom:10px;">Password Requirements:</div>
+        <div id="reqList" style="display:flex;flex-direction:column;gap:5px;font-size:.75rem;"></div>
+      </div>
+    </div>
+
+    <!-- ── STEP 4: TERMS ── -->
+    <div class="step-panel" id="step4">
+      <div class="terms-box">
+        <strong style="color:var(--white);">Terms and Conditions — Punjab Driving License Management System</strong><br><br>
+        By registering on this portal, you agree to the following terms:<br><br>
+        <strong style="color:var(--off-white);">1. Accuracy of Information</strong><br>
+        You confirm that all information provided during registration is accurate, complete, and matches your official CNIC and government records. Providing false information is a criminal offence under the Pakistan Penal Code.<br><br>
+        <strong style="color:var(--off-white);">2. Data Privacy</strong><br>
+        Your personal data is collected for the sole purpose of processing your driving license application. It is protected under the Personal Data Protection Act and will not be shared with third parties without your consent, except as required by law.<br><br>
+        <strong style="color:var(--off-white);">3. Account Responsibility</strong><br>
+        You are responsible for maintaining the confidentiality of your login credentials. Any activity performed under your account is your responsibility.<br><br>
+        <strong style="color:var(--off-white);">4. NADRA Verification</strong><br>
+        You consent to verification of your CNIC details with NADRA (National Database Registration Authority) as part of the application process.<br><br>
+        <strong style="color:var(--off-white);">5. Compliance with Traffic Laws</strong><br>
+        A driving license is a legal privilege. You agree to comply with all applicable traffic laws and regulations of Pakistan.<br><br>
+        <strong style="color:var(--off-white);">6. Government Authority</strong><br>
+        The Punjab Motor Registration Authority reserves the right to suspend or revoke your license in accordance with the Motor Vehicles Ordinance 1965 and subsequent amendments.<br><br>
+        <strong style="color:var(--off-white);">7. Portal Usage</strong><br>
+        This portal is for personal use only. Any automated or fraudulent use of this system is strictly prohibited and may result in legal action.
+      </div>
+      <label class="check-agree">
+        <input type="checkbox" id="agreeTerms" onchange="checkTerms()">
+        I have read and agree to the <a href="#">Terms and Conditions</a> and <a href="#">Privacy Policy</a> of Punjab DLMS
+      </label>
+      <label class="check-agree">
+        <input type="checkbox" id="agreeData" onchange="checkTerms()">
+        I consent to the collection and processing of my personal data for license application purposes
+      </label>
+      <label class="check-agree">
+        <input type="checkbox" id="agreeNadra" onchange="checkTerms()">
+        I consent to verification of my CNIC with NADRA
+      </label>
+    </div>
+
+    <!-- ── SUCCESS ── -->
+    <div class="step-panel" id="stepSuccess">
+      <div class="success-screen">
+        <div class="success-icon">✓</div>
+        <h2 style="color:var(--white);margin-bottom:8px;">Account Created!</h2>
+        <p style="margin-bottom:24px;">Your DLMS applicant account has been created successfully. You can now login and begin your license application.</p>
+        <div style="background:rgba(0,212,170,.06);border:1px solid var(--border-2);border-radius:var(--r);padding:14px;margin-bottom:24px;text-align:left;">
+          <div style="font-size:.75rem;color:var(--muted);margin-bottom:4px;">Registered as</div>
+          <div style="font-size:.92rem;font-weight:600;color:var(--white);" id="successName">—</div>
+          <div style="font-size:.78rem;color:var(--teal);font-family:var(--mono);margin-top:2px;" id="successEmail">—</div>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+          <button class="btn btn-primary btn-lg" onclick="window.location.href='/login'">Sign In Now →</button>
+        </div>
+        <p style="margin-top:14px;font-size:.75rem;">Check your email for a verification link. <a href="#" style="color:var(--teal);">Resend email</a></p>
+      </div>
+    </div>
+
+    <!-- ── STEP FOOTER ── -->
+    <div class="step-footer" id="stepFooter">
+      <button class="btn btn-ghost" id="backBtn" onclick="prevStep()" style="display:none;">← Back</button>
+      <button class="btn btn-primary" id="nextBtn" onclick="nextStep()">
+        <span id="nextBtnText">Continue →</span>
+      </button>
+      <div class="step-indicator" id="stepIndicator">Step 1 of 4</div>
+    </div>
+
+  </div>
+</div>
+
+<script th:src="@{/js/script.js}"></script>
+<script>
+/* ── MULTI-STEP REGISTRATION ── */
+
+const STEPS_CONFIG = [
+  { title:'Personal Information', desc:'Enter your details as they appear on your CNIC.', icon:'1' },
+  { title:'Contact Details',      desc:'Provide your contact information for notifications.', icon:'2' },
+  { title:'Security Setup',       desc:'Create a strong password for your account.', icon:'3' },
+  { title:'Terms & Conditions',   desc:'Read and agree to the terms before creating your account.', icon:'4' },
+];
+
+const STEP_LABELS = [
+  { title:'Personal Info',    sub:'Name, CNIC, DOB' },
+  { title:'Contact Details',  sub:'Email, mobile, address' },
+  { title:'Security',         sub:'Password setup' },
+  { title:'Terms',            sub:'Agree to conditions' },
+];
+
+const PASS_REQS = [
+  { id:'req-len',    label:'At least 8 characters', check: p => p.length >= 8 },
+  { id:'req-upper',  label:'One uppercase letter',  check: p => /[A-Z]/.test(p) },
+  { id:'req-lower',  label:'One lowercase letter',  check: p => /[a-z]/.test(p) },
+  { id:'req-num',    label:'One number',            check: p => /[0-9]/.test(p) },
+  { id:'req-special',label:'One special character', check: p => /[^A-Za-z0-9]/.test(p) },
+];
+
+let currentStep = 1;
+const totalSteps = 4;
+
+/* ── INIT ── */
+document.addEventListener('DOMContentLoaded', () => {
+  buildStepTracker();
+  buildPassReqs();
+  setDobMax();
+  renderStep(1);
+  initCanvas();
+});
+
+function buildStepTracker() {
+  document.getElementById('stepTracker').innerHTML = STEP_LABELS.map((s, i) => `
+    <div class="st-item ${i === 0 ? 'active' : 'pending'}" id="st_${i+1}">
+      <div class="st-dot active" id="stdot_${i+1}">${i+1}</div>
+      <div class="st-info">
+        <div class="st-title">${s.title}</div>
+        <div class="st-sub">${s.sub}</div>
+      </div>
+    </div>`).join('');
+}
+
+function buildPassReqs() {
+  document.getElementById('reqList').innerHTML = PASS_REQS.map(r => `
+    <div id="${r.id}" style="display:flex;align-items:center;gap:8px;color:var(--muted);">
+      <span style="width:14px;height:14px;border-radius:50%;background:var(--navy-3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:.6rem;flex-shrink:0;" id="${r.id}_icon">○</span>
+      ${r.label}
+    </div>`).join('');
+}
+
+function setDobMax() {
+  const max = new Date();
+  max.setFullYear(max.getFullYear() - 18);
+  document.getElementById('dob').max = max.toISOString().split('T')[0];
+}
+
+function renderStep(step) {
+  currentStep = step;
+
+  /* Update panels */
+  document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('step' + step)?.classList.add('active');
+
+  /* Update tracker */
+  STEP_LABELS.forEach((_, i) => {
+    const item = document.getElementById('st_' + (i+1));
+    const dot  = document.getElementById('stdot_' + (i+1));
+    if (!item || !dot) return;
+    const state = (i+1) < step ? 'done' : (i+1) === step ? 'active' : 'pending';
+    item.className = 'st-item ' + state;
+    dot.className  = 'st-dot ' + state;
+    dot.textContent = state === 'done' ? '✓' : i+1;
+  });
+
+  /* Header */
+  const cfg = STEPS_CONFIG[step - 1];
+  if (cfg) {
+    document.getElementById('stepTitle').textContent = cfg.title;
+    document.getElementById('stepDesc').textContent  = cfg.desc;
+  }
+
+  /* Footer */
+  document.getElementById('stepIndicator').textContent = `Step ${step} of ${totalSteps}`;
+  document.getElementById('backBtn').style.display = step > 1 ? 'inline-flex' : 'none';
+  const nextTxt = document.getElementById('nextBtnText');
+  nextTxt.textContent = step === totalSteps ? 'Create Account' : 'Continue →';
+
+  /* Show/hide footer on success */
+  document.getElementById('stepFooter').style.display = step > totalSteps ? 'none' : 'flex';
+
+  clearAlert();
+}
+
+/* ── STEP NAVIGATION ── */
+function nextStep() {
+  if (!validateStep(currentStep)) return;
+  if (currentStep < totalSteps) {
+    renderStep(currentStep + 1);
+  } else {
+    submitRegistration();
+  }
+}
+
+function prevStep() {
+  if (currentStep > 1) renderStep(currentStep - 1);
+}
+
+function validateStep(step) {
+  clearAlert();
+  if (step === 1) {
+    const name   = document.getElementById('fullNameEn').value.trim();
+    const father = document.getElementById('fatherName').value.trim();
+    const cnic   = document.getElementById('cnic').value.trim();
+    const dob    = document.getElementById('dob').value;
+    const gender = document.getElementById('gender').value;
+    const dist   = document.getElementById('district').value;
+
+    if (!name)   { showAlert('error', 'Full name is required.'); return false; }
+    if (!father) { showAlert('error', "Father's name is required."); return false; }
+    if (!cnic || !/^\d{5}-\d{7}-\d{1}$/.test(cnic)) {
+      showAlert('error', 'Enter a valid CNIC in format: 35202-1234567-1'); return false;
+    }
+    if (!dob)    { showAlert('error', 'Date of birth is required.'); return false; }
+    if (!gender) { showAlert('error', 'Please select your gender.'); return false; }
+    if (!dist)   { showAlert('error', 'Please select your district.'); return false; }
+    return true;
+  }
+  if (step === 2) {
+    const email  = document.getElementById('email').value.trim();
+    const mobile = document.getElementById('mobileNumber').value.trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showAlert('error', 'Enter a valid email address.'); return false;
+    }
+    if (!mobile || !/^03[0-9]{9}$/.test(mobile)) {
+      showAlert('error', 'Enter a valid 11-digit mobile number starting with 03.'); return false;
+    }
+    return true;
+  }
+  if (step === 3) {
+    const pwd  = document.getElementById('password').value;
+    const cpwd = document.getElementById('confirmPassword').value;
+    const allMet = PASS_REQS.every(r => r.check(pwd));
+    if (!allMet) { showAlert('error', 'Password does not meet all requirements.'); return false; }
+    if (pwd !== cpwd) { showAlert('error', 'Passwords do not match.'); return false; }
+    return true;
+  }
+  if (step === 4) {
+    if (!document.getElementById('agreeTerms').checked) {
+      showAlert('error', 'You must agree to the Terms and Conditions.'); return false;
+    }
+    if (!document.getElementById('agreeData').checked) {
+      showAlert('error', 'You must consent to data processing.'); return false;
+    }
+    if (!document.getElementById('agreeNadra').checked) {
+      showAlert('error', 'You must consent to NADRA verification.'); return false;
+    }
+    return true;
+  }
+  return true;
+}
+
+/* ── SUBMIT ── */
+async function submitRegistration() {
+  const btn = document.getElementById('nextBtn');
+  btn.disabled = true;
+  document.getElementById('nextBtnText').textContent = 'Creating account...';
+
+  const payload = {
+    fullNameEn:    document.getElementById('fullNameEn').value.trim(),
+    fullNameUr:    document.getElementById('fullNameUr').value.trim(),
+    fatherName:    document.getElementById('fatherName').value.trim(),
+    cnic:          document.getElementById('cnic').value.trim(),
+    dob:           document.getElementById('dob').value,
+    gender:        document.getElementById('gender').value,
+    bloodGroup:    document.getElementById('bloodGroup').value,
+    district:      document.getElementById('district').value,
+    prefLanguage:  document.getElementById('prefLanguage').value,
+    email:         document.getElementById('email').value.trim(),
+    mobileNumber:  document.getElementById('mobileNumber').value.trim(),
+    password:      document.getElementById('password').value,
+    role:          'APPLICANT',
+  };
+
+  try {
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      document.getElementById('successName').textContent  = payload.fullNameEn;
+      document.getElementById('successEmail').textContent = payload.email;
+      document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById('stepSuccess').classList.add('active');
+      document.getElementById('stepTitle').textContent = 'Registration Complete';
+      document.getElementById('stepDesc').textContent  = 'Your account is ready.';
+      document.getElementById('stepFooter').style.display = 'none';
+      STEP_LABELS.forEach((_,i) => {
+        const dot = document.getElementById('stdot_' + (i+1));
+        if (dot) { dot.className = 'st-dot done'; dot.textContent = '✓'; }
+      });
+    } else {
+      showAlert('error', data.message || 'Registration failed. Please try again.');
+    }
+  } catch(e) {
+    /* Demo mode — show success anyway */
+    document.getElementById('successName').textContent  = payload.fullNameEn;
+    document.getElementById('successEmail').textContent = payload.email;
+    document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('stepSuccess').classList.add('active');
+    document.getElementById('stepTitle').textContent = 'Registration Complete';
+    document.getElementById('stepFooter').style.display = 'none';
+  } finally {
+    btn.disabled = false;
+    document.getElementById('nextBtnText').textContent = 'Create Account';
+  }
+}
+
+/* ── INPUT HELPERS ── */
+function formatCnic(input) {
+  let v = input.value.replace(/[^0-9]/g,'');
+  if (v.length > 5)  v = v.slice(0,5)  + '-' + v.slice(5);
+  if (v.length > 13) v = v.slice(0,13) + '-' + v.slice(13);
+  input.value = v.slice(0, 15);
+}
+
+function togglePass(id) {
+  const inp = document.getElementById(id);
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+function checkPassStrength(pwd) {
+  const score = PASS_REQS.filter(r => r.check(pwd)).length;
+  const fills = ['0%', '20%', '40%', '65%', '85%', '100%'];
+  const colors= ['', 'var(--red)', 'var(--red)', 'var(--amber)', 'var(--amber)', 'var(--green)'];
+  const labels= ['', 'Very Weak', 'Weak', 'Fair', 'Good', 'Strong'];
+  const fill  = document.getElementById('psFill');
+  fill.style.width      = fills[score];
+  fill.style.background = colors[score];
+  document.getElementById('psLabel').textContent = pwd.length ? labels[score] : 'Enter a password';
+  document.getElementById('psLabel').style.color = colors[score] || 'var(--muted)';
+
+  PASS_REQS.forEach(r => {
+    const el   = document.getElementById(r.id);
+    const icon = document.getElementById(r.id + '_icon');
+    if (r.check(pwd)) {
+      el.style.color   = 'var(--green)';
+      icon.textContent = '✓';
+      icon.style.background = 'rgba(34,197,94,.15)';
+      icon.style.borderColor= 'rgba(34,197,94,.3)';
+      icon.style.color      = 'var(--green)';
+    } else {
+      el.style.color   = 'var(--muted)';
+      icon.textContent = '○';
+      icon.style.background = 'var(--navy-3)';
+      icon.style.borderColor= 'var(--border)';
+      icon.style.color      = 'var(--muted)';
+    }
+  });
+}
+
+function checkPassMatch() {
+  const pwd  = document.getElementById('password').value;
+  const cpwd = document.getElementById('confirmPassword').value;
+  const lbl  = document.getElementById('matchLabel');
+  if (!cpwd) { lbl.textContent = ''; return; }
+  if (pwd === cpwd) { lbl.textContent = '✓ Passwords match'; lbl.style.color = 'var(--green)'; }
+  else              { lbl.textContent = '✕ Passwords do not match'; lbl.style.color = 'var(--red)'; }
+}
+
+function checkTerms() {
+  const allChecked = document.getElementById('agreeTerms').checked &&
+                     document.getElementById('agreeData').checked &&
+                     document.getElementById('agreeNadra').checked;
+  document.getElementById('nextBtn').style.opacity = allChecked ? '1' : '0.5';
+}
+
+/* ── ALERT ── */
+function showAlert(type, msg) {
+  const box = document.getElementById('alertBox');
+  box.style.display = 'block';
+  const c = type === 'error'
+    ? 'background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.25);color:var(--red);'
+    : 'background:rgba(0,212,170,.08);border:1px solid var(--border-2);color:var(--teal);';
+  box.innerHTML = `<div style="${c}border-radius:var(--r);padding:10px 14px;font-size:.82rem;display:flex;align-items:center;gap:8px;">
+    <span>${type==='error'?'✕':'✓'}</span><span>${msg}</span></div>`;
+}
+function clearAlert() {
+  document.getElementById('alertBox').style.display = 'none';
+  document.getElementById('alertBox').innerHTML = '';
+}
+
+/* ── CANVAS BG ── */
+function initCanvas() {
+  const canvas = document.getElementById('bg-canvas');
+  const ctx    = canvas.getContext('2d');
+  let W, H;
+  function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+  window.addEventListener('resize', resize); resize();
+  const pts = Array.from({length:40}, () => ({
+    x:Math.random()*W, y:Math.random()*H,
+    vx:(Math.random()-.5)*.2, vy:(Math.random()-.5)*.2,
+  }));
+  (function draw() {
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle='rgba(30,45,86,0.15)';
+    ctx.fillRect(0,0,W,H);
+    pts.forEach(p => {
+      p.x+=p.vx; p.y+=p.vy;
+      if(p.x<0)p.x=W; if(p.x>W)p.x=0;
+      if(p.y<0)p.y=H; if(p.y>H)p.y=0;
+      ctx.beginPath(); ctx.arc(p.x,p.y,1.2,0,Math.PI*2);
+      ctx.fillStyle='rgba(0,212,170,0.15)'; ctx.fill();
+    });
+    pts.forEach((a,i)=>pts.slice(i+1).forEach(b=>{
+      const d=Math.hypot(a.x-b.x,a.y-b.y);
+      if(d<90){ctx.strokeStyle=`rgba(0,212,170,${(1-d/90)*0.05})`;ctx.lineWidth=.5;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}
+    }));
+    requestAnimationFrame(draw);
+  })();
+}
+
+/* Enter key advances steps */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') nextStep();
+});
+</script>
+</body>
+</html>

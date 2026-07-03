@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>DLMS — Officer Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+.queue-item {
+  display:flex; align-items:center; gap:20px;
+  padding:20px; background: linear-gradient(135deg, rgba(30,41,59,0.5), rgba(15,23,42,0.8));
+  border:1px solid var(--border); border-radius: 12px;
+  margin-bottom:12px; transition:all 0.3s ease;
+}
+.queue-item:hover { border-color: var(--teal); box-shadow: 0 5px 15px rgba(0,212,170,0.1); transform: translateY(-2px); }
+.queue-item .q-avatar {
+  width: 50px; height: 50px; border-radius: 12px;
+  background: rgba(0,212,170,0.1); border: 2px solid var(--teal);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.2rem; font-weight: 800; color: var(--teal); flex-shrink: 0;
+}
+.queue-item .q-info { flex: 2; }
+.queue-item .q-name { font-size: 1.1rem; font-weight: 700; color: var(--white); margin-bottom: 5px; }
+.queue-item .q-meta { font-size: 0.85rem; color: var(--muted); font-family: var(--mono); }
+
+.queue-item .q-transaction {
+  flex: 1.5; background: rgba(0,0,0,0.3); padding: 10px 15px; border-radius: 8px; border: 1px dashed var(--border-2);
+}
+.q-transaction .label { font-size: 0.65rem; color: var(--gold); text-transform: uppercase; font-weight: bold; letter-spacing: 1px; }
+.q-transaction .value { font-size: 0.95rem; color: var(--white); font-family: monospace; font-weight: bold; margin-top: 3px; }
+
+.queue-item .q-actions { display:flex; gap:10px; flex-shrink:0; flex-direction: column; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">🏛️</div>
+      <div class="logo-text"><strong>Punjab DLMS</strong><span>Officer Portal</span></div>
+    </div>
+    
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Dashboard</div>
+      <div class="nav-item active" id="nav-overview" onclick="showSection('overview',this)">
+        <span class="nav-icon">📊</span>System Overview
+      </div>
+
+      <div class="nav-section-label">Payment Verification</div>
+      <div class="nav-item" id="nav-learner-fee" onclick="showSection('learner-fee',this)">
+        <span class="nav-icon">🟡</span>Learner Fees <span class="nav-badge" id="badgeLearner">0</span>
+      </div>
+      <div class="nav-item" id="nav-license-fee" onclick="showSection('license-fee',this)">
+        <span class="nav-icon">🔵</span>License Fees <span class="nav-badge" id="badgeLicense">0</span>
+      </div>
+      
+      <div class="nav-section-label">License Issuance</div>
+      <div class="nav-item" id="nav-final-approval" onclick="showSection('final-approval',this)">
+        <span class="nav-icon">🟢</span>Final Approvals <span class="nav-badge" id="badgeFinal">0</span>
+      </div>
+
+      <div class="nav-section-label">My Audit Log</div>
+      <div class="nav-item" id="nav-my-history" onclick="showSection('my-history',this)">
+        <span class="nav-icon">📋</span>Processed Records
+      </div>
+      
+    </nav>
+    
+    <div class="sidebar-footer">
+      <div class="sidebar-user" onclick="logout()">
+        <div class="avatar" id="sidebarAvatar">O</div>
+        <div class="sidebar-user-info">
+          <div class="name" id="sidebarName">Officer</div>
+          <div class="role">Licensing Officer</div>
+        </div>
+        <span style="color:var(--muted);font-size:.8rem;">⇥</span>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main-content">
+    <header class="topbar">
+      <div class="topbar-title" id="topbarTitle">Task Dashboard </div>
+      <div class="topbar-actions">
+        <div class="icon-btn" onclick="loadAll()" title="Refresh Data">↺</div>
+      </div>
+    </header>
+
+    <div class="page-content">
+
+      <section id="sec-overview" class="stagger">
+        <div class="page-header">
+            <h2>Welcome, Licensing Officer</h2>
+            <p>Here is your high-level overview of the current queue.</p>
+        </div>
+        
+        <div class="stats-grid" style="margin-bottom:25px;">
+          <div class="stat-card gold"><div class="stat-icon gold">💳</div><div class="stat-info"><div class="stat-value" id="statLearner">0</div><div class="stat-label">Pending Learner Fees</div></div></div>
+          <div class="stat-card blue"><div class="stat-icon blue">💳</div><div class="stat-info"><div class="stat-value" id="statLicense">0</div><div class="stat-label">Pending License Fees</div></div></div>
+          <div class="stat-card teal"><div class="stat-icon teal">✨</div><div class="stat-info"><div class="stat-value" id="statFinal">0</div><div class="stat-label">Pending Final Issuance</div></div></div>
+          <div class="stat-card green"><div class="stat-icon green">✅</div><div class="stat-info"><div class="stat-value" id="statMyProcessed">0</div><div class="stat-label">Processed by Me</div></div></div>
+        </div>
+
+        <div class="card" style="border-top: 4px solid var(--teal);">
+            <div style="text-align:center; padding: 40px 20px;">
+                <div style="font-size: 3rem; margin-bottom: 15px;">📥</div>
+                <h3 style="color: var(--white); margin-bottom: 10px;">Ready to work?</h3>
+                <p style="color: var(--muted); margin-bottom: 20px;">Select a specific task queue from the sidebar on the left to begin verifying payments or issuing licenses.</p>
+            </div>
+        </div>
+      </section>
+
+      <section id="sec-learner-fee" style="display:none;" class="stagger">
+        <div class="card" style="border-top: 4px solid var(--gold);">
+          <div class="card-header">
+            <h3>Learner Fee Verifications</h3>
+            <span class="badge badge-gold">Rs. 300 Payments</span>
+          </div>
+          <div id="learnerFeeQueue"><p style="text-align:center;padding:30px;color:var(--muted);">No pending learner payments.</p></div>
+        </div>
+      </section>
+
+      <section id="sec-license-fee" style="display:none;" class="stagger">
+        <div class="card" style="border-top: 4px solid #2196f3;">
+          <div class="card-header">
+            <h3>Final License Fee Verifications</h3>
+            <span class="badge" style="background: rgba(33, 150, 243, 0.1); color: #2196f3;">Rs. 2500 Payments</span>
+          </div>
+          <div id="licenseFeeQueue"><p style="text-align:center;padding:30px;color:var(--muted);">No pending license payments.</p></div>
+        </div>
+      </section>
+
+      <section id="sec-final-approval" style="display:none;" class="stagger">
+        <div class="card" style="border-top: 4px solid var(--teal);">
+          <div class="card-header">
+            <h3>Ready for Final Signature & Issuance</h3>
+            <span class="badge badge-teal">All Checks Passed</span>
+          </div>
+          <div id="finalApprovalQueue"><p style="text-align:center;padding:30px;color:var(--muted);">No licenses awaiting final signature.</p></div>
+        </div>
+      </section>
+
+      <section id="sec-my-history" style="display:none;" class="stagger">
+        <div class="card">
+          <div class="card-header">
+            <h3>My Processed Records</h3>
+            <span style="font-size: 0.85rem; color: var(--muted);">Complete history of all payments and licenses you have processed.</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>App ID</th><th>Applicant</th><th>Task Type</th><th>Decision</th><th>Date/Time</th></tr></thead>
+              <tbody id="myHistoryTable"><tr><td colspan="5" style="text-align:center;padding:30px;color:var(--muted);">Loading history...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="rejectModal">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-header">
+      <h3>Reject Application</h3>
+      <button class="close-btn" onclick="closeModal('rejectModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="rejectAppId">
+      <div class="form-group">
+        <label class="form-label">Rejection Reason</label>
+        <select class="form-control" id="rejectReasonSelect" onchange="updateRejectText(this)">
+          <option value="">Select a reason...</option>
+          <option value="Transaction ID does not exist in bank records.">Invalid Transaction ID</option>
+          <option value="Incorrect fee amount deposited.">Incorrect fee amount</option>
+          <option value="Payment deposited against wrong challan number.">Wrong Challan Number</option>
+          <option value="Payment receipt image is blurry or unreadable.">Receipt is blurry/unreadable</option>
+          <option value="Custom reason (see below)">Other — specify below</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Full Reason</label>
+        <textarea class="form-control" id="rejectReason" rows="3" placeholder="Enter detailed rejection reason..."></textarea>
+      </div>
+      <button class="btn btn-danger" style="width:100%; font-size: 1.05rem;" onclick="confirmReject()">Confirm Rejection</button>
+    </div>
+  </div>
+</div>
+
+<script th:src="@{/js/script.js}"></script>
+<script th:inline="none">
+let allApps = [];
+let currentOfficerId = null;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const user = Session.user || { id: 1, fullNameEn:'Officer', role:'LICENSING_OFFICER' };
+  currentOfficerId = user.id; 
+  document.getElementById('sidebarName').textContent   = user.fullNameEn || 'Officer';
+  document.getElementById('sidebarAvatar').textContent = fmt.initials(user.fullNameEn);
+  
+  await loadAll();
+});
+
+async function loadAll() {
+	  try {
+	    // 1. Load Pending Queues
+	    const pendingRes = await API.get('/api/officer/applications/pending-payment');
+	    const pendingApps = pendingRes?.data || [];
+	    
+	    // 🚨 NEW: Fetch history DIRECTLY from the PaymentAuditLog table!
+	    const historyRes = await API.get('/api/officer/applications/my-history');
+	    const historyLogs = historyRes?.data || [];
+
+	    const learnerFees = pendingApps.filter(a => a.currentStage === 'PAYMENT_VERIFICATION' || a.currentStage === 'LEARNER_FEE_PENDING');
+	    const licenseFees = pendingApps.filter(a => a.currentStage === 'FINAL_PAYMENT_VERIFICATION');
+	    const finalApprovals = pendingApps.filter(a => a.currentStage === 'FINAL_REVIEW');
+
+	    renderTaskQueue('learnerFeeQueue', learnerFees, 'LEARNER FEE');
+	    renderTaskQueue('licenseFeeQueue', licenseFees, 'LICENSE FEE');
+	    renderTaskQueue('finalApprovalQueue', finalApprovals, 'FINAL');
+
+	    // Send the pristine database logs directly to the table
+	    renderMyHistoryTable(historyLogs);
+
+	    // Update Badges & Stats
+	    document.getElementById('badgeLearner').textContent = learnerFees.length;
+	    document.getElementById('statLearner').textContent = learnerFees.length;
+	    document.getElementById('badgeLicense').textContent = licenseFees.length;
+	    document.getElementById('statLicense').textContent = licenseFees.length;
+	    document.getElementById('badgeFinal').textContent = finalApprovals.length;
+	    document.getElementById('statFinal').textContent = finalApprovals.length;
+
+	  } catch(e) {
+	    console.error("Data Load Error:", e);
+	  }
+	}
+
+// 🚨 FIX 1: The Deep Search Function for nested Payment Tables
+function extractPaymentData(app, targetPaymentType) {
+    let transId = 'Awaiting Sync';
+    let challan = 'N/A';
+
+    // 1. Look inside a nested "payments" array if Spring Boot sends it
+    if (app.payments && Array.isArray(app.payments)) {
+        const p = app.payments.find(payment => payment.paymentType === targetPaymentType);
+        if (p) {
+            if (p.transactionId) transId = p.transactionId;
+            if (p.challanNo) challan = p.challanNo;
+            return { transId, challan };
+        }
+    }
+    
+    // 2. Look inside a singular nested "payment" object
+    if (app.payment) {
+        if (app.payment.transactionId) transId = app.payment.transactionId;
+        if (app.payment.challanNo) challan = app.payment.challanNo;
+    } 
+    // 3. Fallback to surface level variables
+    else {
+        transId = app.transactionId || app.transactionRef || 'Awaiting Sync';
+        challan = app.activeChallanNo || app.challanNo || 'N/A';
+    }
+
+    return { transId, challan };
+}
+
+function renderTaskQueue(containerId, apps, taskType) {
+  const container = document.getElementById(containerId);
+  if (!apps || apps.length === 0) {
+      container.innerHTML = `<p style="text-align:center; padding:30px; color:var(--muted);">No pending tasks in this queue.</p>`;
+      return;
+  }
+
+  container.innerHTML = apps.map(app => {
+    const name = app.applicant?.user?.fullNameEn || 'Unknown Applicant';
+    const cnic = app.applicant?.user?.cnic || '00000-0000000-0';
+    
+    // 🚨 Fetch the data using our new deep extractor!
+    const { transId, challan } = extractPaymentData(app, taskType);
+
+    let actionBtns = '';
+    
+    if (taskType === 'LEARNER FEE') {
+        actionBtns = `
+            <button class="btn btn-warning" style="width:100%; margin-bottom:8px;" onclick="handleVerifyLearner(${app.applicationId}, '${name}')">Verify Learner Fee</button>
+            <button class="btn btn-outline" style="width:100%; border-color:var(--red); color:var(--red);" onclick="openRejectModal(${app.applicationId})">Reject Receipt</button>`;
+    } else if (taskType === 'LICENSE FEE') {
+        actionBtns = `
+            <button class="btn btn-primary" style="width:100%; margin-bottom:8px;" onclick="handleVerifyLicenseFee(${app.applicationId}, '${name}')">Verify License Fee</button>
+            <button class="btn btn-outline" style="width:100%; border-color:var(--red); color:var(--red);" onclick="openRejectModal(${app.applicationId})">Reject Receipt</button>`;
+    } else if (taskType === 'FINAL') {
+        actionBtns = `<button class="btn btn-success" style="width:100%; height:100%; font-size:1.05rem;" onclick="handleIssuePermanent(${app.applicationId}, '${name}')">✨ Approve & Issue Final License</button>`;
+    }
+
+    return `
+    <div class="queue-item">
+      <div class="q-avatar">${fmt.initials(name)}</div>
+      <div class="q-info">
+        <div class="q-name">${name}</div>
+        <div class="q-meta">CNIC: ${cnic}</div>
+        <div class="q-meta" style="margin-top:5px; color:var(--teal);">App ID: #${app.applicationId}</div>
+      </div>
+
+      ${taskType !== 'FINAL' ? `
+      <div class="q-transaction">
+          <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+              <div>
+                  <div class="label">Challan Number</div>
+                  <div class="value" style="color:var(--gold);">${challan}</div>
+              </div>
+          </div>
+          <div>
+              <div class="label">Applicant Entered Transaction ID</div>
+              <div class="value">${transId}</div>
+          </div>
+      </div>
+      ` : `
+      <div class="q-transaction" style="border-color:var(--teal); background:rgba(0,212,170,0.05);">
+          <div class="label" style="color:var(--teal);">Final Audit Status</div>
+          <div class="value">All Tests Passed. Fees Verified. Ready for Cryptographic Signature.</div>
+      </div>
+      `}
+
+      <div class="q-actions" style="width: 200px;">
+          ${actionBtns}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderMyHistoryTable(logs) {
+	  const container = document.getElementById('myHistoryTable');
+	  
+	  if (!logs || logs.length === 0) {
+	    container.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 30px; color: var(--muted);">No processed records found.</td></tr>';
+	    document.getElementById('statMyProcessed').textContent = 0;
+	    return;
+	  }
+
+	  const rows = logs.map(log => {
+	      // Format the exact timestamp from the database
+	      const date = new Date(log.timestamp);
+	      const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+	      
+	      const isApproved = log.decision === 'APPROVED';
+	      const badgeColor = isApproved ? 'var(--teal)' : '#ff4d4d';
+	      const icon = isApproved ? '✅' : '❌';
+	      const remarksHtml = log.remarks ? `<br><span style="font-size:0.75rem; color:var(--muted);">${log.remarks}</span>` : '';
+	      const taskLabel = log.taskType === 'LICENSE_FEE' ? 'License Fee Verification' : 'Learner Fee Verification';
+
+	      return `<tr>
+	          <td>#${log.applicationId}</td>
+	          <td>${log.applicantName}</td>
+	          <td>${taskLabel}</td>
+	          <td><span style="color:${badgeColor}; font-weight:bold;">${icon} ${log.decision}</span>${remarksHtml}</td>
+	          <td>${dateStr}</td>
+	      </tr>`;
+	  });
+
+	  document.getElementById('statMyProcessed').textContent = rows.length;
+	  container.innerHTML = rows.join('');
+	}
+
+// 🚨 UPDATE THE EXTRACTOR TO PULL REMARKS TOO
+function extractPaymentData(app, targetPaymentType) {
+    let transId = 'Awaiting Sync';
+    let challan = 'N/A';
+    let remarks = null;
+
+    if (app.payments && Array.isArray(app.payments)) {
+        const p = app.payments.find(payment => payment.paymentType === targetPaymentType);
+        if (p) {
+            if (p.transactionId) transId = p.transactionId;
+            if (p.challanNo) challan = p.challanNo;
+            if (p.remarks) remarks = p.remarks;
+            return { transId, challan, remarks };
+        }
+    }
+    
+    if (app.payment) {
+        if (app.payment.transactionId) transId = app.payment.transactionId;
+        if (app.payment.challanNo) challan = app.payment.challanNo;
+        if (app.payment.remarks) remarks = app.payment.remarks;
+    } else {
+        transId = app.transactionId || app.transactionRef || 'Awaiting Sync';
+        challan = app.activeChallanNo || app.challanNo || 'N/A';
+    }
+
+    return { transId, challan, remarks };
+}
+
+// ─── ACTION HANDLERS & MODALS REMAIN THE SAME BELOW THIS LINE ───
+async function handleVerifyLearner(appId, name) {
+    const confirmed = await Swal.fire({ title: 'Verify Learner Fee?', text: `Approve payment for ${name}?`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#ff9800' });
+    if (!confirmed.isConfirmed) return;
+    Loader.show('Verifying payment...');
+    await API.put(`/api/officer/applications/${appId}/verify-payment`).catch(()=>Toast.error('Failed'));
+    Toast.success('Payment verified!');
+    await loadAll();
+    Loader.hide();
+}
+async function handleVerifyLicenseFee(appId, name) {
+    const confirmed = await Swal.fire({ title: 'Verify License Fee?', text: `Approve Rs. 2500 payment for ${name}?`, icon: 'question', showCancelButton: true, confirmButtonColor: '#2196f3' });
+    if (!confirmed.isConfirmed) return;
+    Loader.show('Verifying...');
+    await API.put(`/api/officer/applications/${appId}/verify-final-fee`).catch(()=>Toast.error('Failed'));
+    Toast.success('Final Fee Verified!');
+    await loadAll();
+    Loader.hide();
+}
+async function handleIssuePermanent(appId, name) {
+    const confirmed = await Swal.fire({ title: 'Issue Permanent License?', text: `Generate and issue the final driving license for ${name}?`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#4caf50' });
+    if (!confirmed.isConfirmed) return;
+    Loader.show('Issuing License...');
+    await API.post(`/api/officer/applications/${appId}/issue-license`).catch(()=>Toast.error('Failed'));
+    Toast.success('License Officially Issued!');
+    await loadAll();
+    Loader.hide();
+}
+function openModal(id) { document.getElementById(id)?.classList.add('open'); }
+function closeModal(id) { document.getElementById(id)?.classList.remove('open'); }
+function openRejectModal(appId) {
+ document.getElementById('rejectAppId').value = appId; document.getElementById('rejectReasonSelect').value = ''; document.getElementById('rejectReason').value = ''; openModal('rejectModal');
+}
+function updateRejectText(selectElem) {
+ const textArea = document.getElementById('rejectReason');
+ if (selectElem.value === 'Custom reason (see below)') { textArea.value = ''; textArea.focus(); } else { textArea.value = selectElem.value; }
+}
+async function confirmReject() {
+    const appId = document.getElementById('rejectAppId').value;
+    const reasonText = document.getElementById('rejectReason').value.trim();
+    if (!reasonText) return Swal.fire('Required', 'Please provide a reason for rejection.', 'warning');
+    Loader.show('Processing rejection...');
+    const response = await API.put(`/api/officer/applications/${appId}/reject`, { reason: reasonText }).catch(()=>null);
+    if (response) { closeModal('rejectModal'); Swal.fire('Success', 'Payment rejected and applicant notified.', 'success'); await loadAll(); }
+    Loader.hide();
+}
+function showSection(name, navEl) {
+  document.querySelectorAll('[id^="sec-"]').forEach(s => s.style.display = 'none');
+  document.getElementById('sec-' + name).style.display = 'block';
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  navEl?.classList.add('active');
+}
+function logout() { API.post('/api/auth/logout').finally(() => { Session.clear(); window.location.href = '/login'; }); }
+</script>

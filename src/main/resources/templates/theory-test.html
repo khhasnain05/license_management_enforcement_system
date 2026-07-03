@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>DLMS - Theory Test</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        :root { --bg: #0a0f1e; --card: #151b2b; --teal: #00d4aa; --red: #ff4d4d; --white: #fff; --muted: #8b9bb4; }
+        body { font-family: 'Sora', sans-serif; background: var(--bg); color: var(--white); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .test-container { background: var(--card); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 40px; width: 100%; max-width: 600px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .header { display: flex; justify-content: space-between; margin-bottom: 30px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; }
+        .timer { font-size: 1.5rem; font-weight: bold; color: var(--teal); font-family: monospace; }
+        .question-text { font-size: 1.2rem; font-weight: 600; margin-bottom: 20px; line-height: 1.5; }
+        .option { display: block; padding: 15px; margin-bottom: 10px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; cursor: pointer; transition: 0.2s; }
+        .option:hover { background: rgba(0,212,170,0.1); border-color: var(--teal); }
+        .option input { margin-right: 15px; transform: scale(1.2); }
+        .btn { background: var(--teal); color: #000; border: none; padding: 14px 24px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 20px; font-size: 1rem; }
+        .btn:hover { background: #00b38f; }
+        
+        /* Result Card Styles */
+        #resultCard { display: none; text-align: center; }
+        .score-circle { width: 120px; height: 120px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: bold; margin: 0 auto 20px; border: 4px solid var(--teal); }
+    </style>
+</head>
+<body>
+
+<div class="test-container" id="testUI">
+    <div class="header">
+        <div>Question <span id="qNum">1</span> of 5</div>
+        <div class="timer" id="timeDisplay">01:00</div>
+    </div>
+    
+    <div class="question-text" id="qText">Loading question...</div>
+    
+    <div id="optionsContainer">
+        </div>
+
+    <button class="btn" onclick="nextQuestion()" id="nextBtn">Next Question</button>
+</div>
+
+<div class="test-container" id="resultCard">
+    <div class="score-circle" id="scoreCircle">0%</div>
+    <h2 id="resultTitle">Test Complete</h2>
+    <p style="color: var(--muted); margin-bottom: 30px;" id="resultMessage">Calculating results...</p>
+    <button class="btn" onclick="window.close()">Close & Return to Dashboard</button>
+</div>
+
+<script>
+    // 1. Setup Variables
+    const urlParams = new URLSearchParams(window.location.search);
+    const appId = urlParams.get('appId');
+    
+    let questions = [];
+    let currentQIndex = 0;
+    let score = 0;
+    let userAnswers = [];
+    
+    let timeLeft = 60; // 1 minute per question
+    let timerInterval;
+
+    // 2. Fetch Questions on Load
+    window.onload = async () => {
+        if (!appId) { alert("Invalid access. Missing Application ID."); window.close(); return; }
+        
+        try {
+            // Replace with your actual backend URL if running on a different port
+            const res = await fetch('/api/tests/theory/questions'); 
+            questions = await res.json();
+            
+            if(questions.length > 0) {
+                loadQuestion();
+            } else {
+                alert("No questions found in the database. Please add some!");
+            }
+        } catch (e) {
+            console.error("Failed to load questions", e);
+        }
+    };
+
+    // 3. Load UI
+    function loadQuestion() {
+        clearInterval(timerInterval);
+        timeLeft = 60;
+        document.getElementById('timeDisplay').textContent = "01:00";
+        document.getElementById('timeDisplay').style.color = "var(--teal)";
+        
+        // Start Timer
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            document.getElementById('timeDisplay').textContent = `00:${timeLeft < 10 ? '0' : ''}${timeLeft}`;
+            if (timeLeft <= 10) document.getElementById('timeDisplay').style.color = "var(--red)";
+            
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                nextQuestion(); // Auto-move to next if time runs out
+            }
+        }, 1000);
+
+        const q = questions[currentQIndex];
+        document.getElementById('qNum').textContent = currentQIndex + 1;
+        document.getElementById('qText').textContent = q.text;
+        
+        document.getElementById('nextBtn').textContent = currentQIndex === 4 ? "Submit Test" : "Next Question";
+
+        document.getElementById('optionsContainer').innerHTML = `
+            <label class="option"><input type="radio" name="ans" value="A"> ${q.optionA}</label>
+            <label class="option"><input type="radio" name="ans" value="B"> ${q.optionB}</label>
+            <label class="option"><input type="radio" name="ans" value="C"> ${q.optionC}</label>
+            <label class="option"><input type="radio" name="ans" value="D"> ${q.optionD}</label>
+        `;
+    }
+
+    // 4. Handle Next / Submit
+   async function nextQuestion() {
+        const selected = document.querySelector('input[name="ans"]:checked');
+        const q = questions[currentQIndex];
+        const selectedVal = selected ? selected.value : null;
+        
+        // 🚨 Record what they clicked
+        userAnswers.push({
+            questionId: q.id, 
+            selectedOption: selectedVal
+        });
+
+        // Grade the answer
+        if (selectedVal === q.correctOption) {
+            score += 20; 
+        }
+
+        currentQIndex++;
+        
+        if (currentQIndex < 5) {
+            loadQuestion();
+        } else {
+            clearInterval(timerInterval);
+            await submitFinalScore();
+        }
+    }
+
+    // 5. Submit to Backend and Show Results
+   // 5. Submit to Backend and Show Results
+    async function submitFinalScore() {
+        document.getElementById('testUI').style.display = 'none';
+        document.getElementById('resultCard').style.display = 'block';
+        
+        const circle = document.getElementById('scoreCircle');
+        circle.textContent = score + '%';
+        circle.style.borderColor = score >= 70 ? 'var(--teal)' : 'var(--red)';
+        circle.style.color = score >= 70 ? 'var(--teal)' : 'var(--red)';
+
+        try {
+            const res = await fetch('/api/tests/theory/submit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                // 🚨 THE FIX: Added the answers array to the payload!
+                body: JSON.stringify({ 
+                    applicationId: appId, 
+                    score: score,
+                    answers: userAnswers 
+                })
+            });
+            const data = await res.json();
+            
+            document.getElementById('resultTitle').textContent = data.passed ? "Test Passed!" : "Test Failed";
+            document.getElementById('resultMessage').textContent = data.message;
+            
+        } catch (e) {
+            document.getElementById('resultMessage').textContent = "Score calculated, but failed to save to server.";
+        }
+    }
+</script>
+</body>
+</html>

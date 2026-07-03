@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>DLMS — Testing Officer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+.candidate-card{
+  background:rgba(255,255,255,.03);border:1px solid var(--border);
+  border-radius:var(--r);padding:16px;margin-bottom:10px;
+  cursor:pointer;transition:all .2s;
+}
+.candidate-card:hover{border-color:rgba(0,212,170,.25);background:rgba(0,212,170,.03);transform:translateX(3px);}
+.candidate-card .cc-top{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
+.candidate-card .cc-avatar{width:40px;height:40px;border-radius:50%;background:var(--navy-4);border:1.5px solid var(--border-2);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.82rem;color:var(--teal);flex-shrink:0;}
+.candidate-card .cc-name{font-size:.9rem;font-weight:600;color:var(--white);}
+.candidate-card .cc-meta{font-size:.73rem;color:var(--muted);margin-top:2px;font-family:var(--mono);}
+.candidate-card .cc-footer{display:flex;align-items:center;gap:8px;margin-top:12px;}
+
+/* Custom styles for the table */
+.history-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+.history-table th { text-align: left; padding: 12px; color: var(--muted); font-size: 0.8rem; border-bottom: 1px solid var(--border); }
+.history-table td { padding: 12px; font-size: 0.85rem; border-bottom: 1px solid var(--border-2); color: var(--off-white); }
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">🧪</div>
+      <div class="logo-text"><strong>Punjab DLMS</strong><span>Testing Officer</span></div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Overview</div>
+      <div class="nav-item active" id="nav-dashboard" onclick="showSection('dashboard',this)">
+        <span class="nav-icon">📊</span>Dashboard
+      </div>
+      <div class="nav-section-label">Tasks</div>
+      <div class="nav-item" id="nav-practical" onclick="showSection('practical',this)">
+        <span class="nav-icon">🚗</span>Practical Tests
+      </div>
+      <div class="nav-item" id="nav-medical" onclick="showSection('medical',this)">
+        <span class="nav-icon">🏥</span>Medical Review
+        <span class="nav-badge" id="medCountBadge" style="background:var(--amber);color:#000;">0</span>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-user" onclick="logout()">
+        <div class="avatar" id="sidebarAvatar">T</div>
+        <div class="sidebar-user-info">
+          <div class="name" id="sidebarName">Testing Officer</div>
+          <div class="role" id="sidebarDistrict" style="color:var(--teal); font-size:0.65rem; text-transform:uppercase; letter-spacing:0.5px;">District: —</div>
+          <div class="role" id="sidebarCenter" style="color:var(--muted); font-size:0.6rem; margin-top:2px;">Sign Out →</div>
+        </div>
+        <span style="color:var(--muted);font-size:.8rem;">⇥</span>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main-content">
+    <header class="topbar">
+      <div class="topbar-title" id="topbarTitle">Dashboard <span>Overview</span></div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost" onclick="loadAllData()" style="display:flex; align-items:center; gap:8px;">
+           <span style="font-size:1.1rem;">↺</span> Refresh
+        </button>
+      </div>
+    </header>
+
+    <div class="page-content">
+
+      <section id="sec-dashboard">
+        
+        <h4 style="margin-bottom:12px; color:var(--muted); font-size:0.85rem; text-transform:uppercase; letter-spacing:1px;">Practical Tests (<span id="dashboardCenterLabel">All Centers</span>)</h4>
+        <div class="stats-grid stagger" style="margin-bottom:30px;">
+          <div class="stat-card gold"><div class="stat-icon gold">🚗</div><div class="stat-info"><div class="stat-value" id="statToday">0</div><div class="stat-label">Tests Today</div></div></div>
+          <div class="stat-card teal"><div class="stat-icon teal">✅</div><div class="stat-info"><div class="stat-value" id="statPassed">0</div><div class="stat-label">Passed Today</div></div></div>
+          <div class="stat-card red"><div class="stat-icon red">❌</div><div class="stat-info"><div class="stat-value" id="statFailed">0</div><div class="stat-label">Failed Today</div></div></div>
+          <div class="stat-card green"><div class="stat-icon green">📈</div><div class="stat-info"><div class="stat-value" id="statPassRate">0%</div><div class="stat-label">Pass Rate</div></div></div>
+        </div>
+
+        <h4 style="margin-bottom:12px; color:var(--muted); font-size:0.85rem; text-transform:uppercase; letter-spacing:1px;">Medical Certificates</h4>
+        <div class="stats-grid stagger" style="margin-bottom:20px;">
+          <div class="stat-card navy"><div class="stat-icon" style="background:var(--navy-3);color:var(--white);">🏥</div><div class="stat-info"><div class="stat-value" id="statMedTotal">0</div><div class="stat-label">Total Reviewed</div></div></div>
+          <div class="stat-card teal"><div class="stat-icon teal">👍</div><div class="stat-info"><div class="stat-value" id="statMedApp">0</div><div class="stat-label">Approved</div></div></div>
+          <div class="stat-card red"><div class="stat-icon red">👎</div><div class="stat-info"><div class="stat-value" id="statMedRej">0</div><div class="stat-label">Rejected</div></div></div>
+          <div class="stat-card amber"><div class="stat-icon amber">⏳</div><div class="stat-info"><div class="stat-value" id="statMedPend">0</div><div class="stat-label">Pending Review</div></div></div>
+        </div>
+
+      </section>
+
+      <section id="sec-practical" style="display:none;">
+        <div class="page-header"><h2>Practical Tests</h2><p>Evaluate candidates for their driving capabilities.</p></div>
+        <div class="grid-main">
+          
+          <div class="card">
+            <div class="card-header"><h3>Scheduled Candidates</h3></div>
+            <div id="practicalCandidatesList">
+                <p style="text-align:center;padding:20px;color:var(--muted);">Loading candidates...</p>
+            </div>
+          </div>
+          
+          <div class="card" id="evaluationPanel">
+            <div style="text-align:center;padding:40px 20px;color:var(--muted);">
+              <div style="font-size:2.5rem;margin-bottom:12px;">🚗</div>
+              <p>Select a candidate to open the driving evaluation form.</p>
+            </div>
+          </div>
+          
+          <div class="card" style="margin-top: 20px;">
+            <div class="card-header">
+                <h3>Conducted Tests Audit</h3>
+                <span class="badge badge-teal">History</span>
+            </div>
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>App ID</th>
+                        <th>Candidate Name</th>
+                        <th>Category</th>
+                        <th>Test Date</th>
+                        <th>Result</th>
+                    </tr>
+                </thead>
+                <tbody id="practicalHistoryList">
+                    <tr><td colspan="5" style="text-align:center;color:var(--muted);">No history found.</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        </div>
+      </section>
+
+      <section id="sec-medical" style="display:none;">
+        <div class="page-header"><h2>Medical Certificate Review</h2><p>Review and approve uploaded medical fitness certificates</p></div>
+        
+        <div class="grid-2" style="margin-bottom: 20px;">
+          <div class="card">
+            <div class="card-header"><h3>Pending Review</h3><span class="badge badge-amber" id="medCount">0 Pending</span></div>
+            <div id="medList">
+                <p style="text-align:center;padding:30px;color:var(--muted);">Loading certificates...</p>
+            </div>
+          </div>
+          <div class="card" id="medPreview">
+            <div style="text-align:center;padding:40px 20px;color:var(--muted);">
+              <div style="font-size:2.5rem;margin-bottom:12px;">🏥</div>
+              <p>Select a certificate from the list to review it.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><h3>Recently Reviewed Certificates</h3></div>
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>App ID</th>
+                        <th>Candidate Name</th>
+                        <th>Status</th>
+                        <th>Review Date</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody id="medHistoryList">
+                    <tr><td colspan="5" style="text-align:center;color:var(--muted);">No history found.</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<script th:src="@{/js/script.js}"></script>
+<script>
+let pendingCerts = []; 
+let historyCerts = [];
+let scheduledTests = [];
+
+// District-based routing is enforced entirely server-side.
+// The backend resolves the officer's district from their Spring Security Principal.
+// No officerId is sent with any API request from this dashboard.
+
+document.addEventListener('DOMContentLoaded', async () => {
+  let user = Session?.user;
+
+  // Always try to refresh from server to get latest district/assignedCenter
+  try {
+    const res = await API.get('/api/auth/me');
+    if (res?.data) { 
+      user = { ...(user || {}), ...res.data }; 
+      Session.user = user; 
+    }
+  } catch (e) {
+    console.warn("Could not fetch user session.");
+  }
+
+  // Try to fetch testing officer profile (which has assignedCenter)
+  try {
+    const officerRes = await API.get('/api/testing-officer/me');
+    if (officerRes?.data) {
+      user.assignedCenter = officerRes.data.assignedCenter || user.assignedCenter;
+      user.district = officerRes.data.district || user.district;
+    }
+  } catch (e) {
+    console.warn("Could not fetch officer profile.");
+  }
+
+  if (!user) user = { userId: 1, fullNameEn: 'Testing Officer' };
+
+  // 1. Center → District map
+  const centerToDistrictMap = {
+    "Lahore Motor Registration Authority": "Lahore",
+    "Rawalpindi DLMS Office": "Rawalpindi",
+    "Islamabad DLMS Center": "Islamabad",
+    "Faisalabad Testing Center": "Faisalabad",
+    "Multan Motor Registration Authority": "Multan"
+  };
+
+  // 2. Email → District map (covers your seed accounts)
+  const emailToDistrictMap = {
+    "testing.officer@dlms.pk": "Lahore",
+    "testing.officer1@dlms.pk": "Rawalpindi",
+    "testing.officer2@dlms.pk": "Islamabad",
+    "testing.officer3@dlms.pk": "Faisalabad",
+    "testing.officer4@dlms.pk": "Multan"
+  };
+
+  // 3. Resolve district in priority order
+  let district = user.district;
+
+  if (!district && user.assignedCenter) {
+    district = centerToDistrictMap[user.assignedCenter];
+  }
+
+  if (!district && user.email) {
+    district = emailToDistrictMap[user.email.toLowerCase()];
+  }
+
+  if (!district && user.email) {
+    const email = user.email.toLowerCase();
+    if (email.includes('rwp') || email.includes('rawalpindi')) district = 'Rawalpindi';
+    else if (email.includes('lhr') || email.includes('lahore')) district = 'Lahore';
+    else if (email.includes('isb') || email.includes('islamabad')) district = 'Islamabad';
+    else if (email.includes('fsd') || email.includes('faisalabad')) district = 'Faisalabad';
+    else if (email.includes('mul') || email.includes('multan')) district = 'Multan';
+  }
+
+  // Final fallback — show "Unknown" instead of misleading "Punjab"
+  if (!district) district = 'Unassigned';
+
+  // 4. Update UI
+  document.getElementById('sidebarName').textContent = user.fullNameEn || 'Testing Officer';
+  document.getElementById('sidebarAvatar').textContent = fmt.initials(user.fullNameEn || 'TO');
+  document.getElementById('sidebarDistrict').textContent = 'District: ' + district;
+
+  const dashLabel = document.getElementById('dashboardCenterLabel');
+  if (dashLabel) dashLabel.textContent = district + ' District';
+
+  loadAllData();
+});
+
+function loadAllData() {
+    Loader.show('Syncing data...');
+    Promise.all([
+        loadPendingMedical(),
+        loadMedicalHistory(),
+        loadPracticalTests()
+    ]).finally(() => {
+        Loader.hide();
+    });
+}
+
+/* ══════════════════════════════════════════
+REAL MEDICAL CERTIFICATE LOGIC
+══════════════════════════════════════════ */
+async function loadPendingMedical() {
+ try {
+     const response = await API.get('/api/officer/medical/pending');
+     let rawData = response?.data || response;
+     
+     pendingCerts = Array.isArray(rawData) ? rawData : [];
+     
+     document.getElementById('medCount').textContent = pendingCerts.length + ' Pending';
+     document.getElementById('medCountBadge').textContent = pendingCerts.length;
+     document.getElementById('statMedPend').textContent = pendingCerts.length;
+     
+     const medList = document.getElementById('medList');
+
+     if (pendingCerts.length === 0) {
+         medList.innerHTML = '<p style="text-align:center;padding:30px;color:var(--muted);">No pending certificates.</p>';
+         document.getElementById('medPreview').innerHTML = `
+           <div style="text-align:center;padding:40px 20px;color:var(--muted);">
+             <div style="font-size:2.5rem;margin-bottom:12px;">🏥</div>
+             <p>Select a certificate from the list to review it.</p>
+           </div>`;
+         return;
+     }
+
+     medList.innerHTML = pendingCerts.map(cert => {
+         const appName = cert.application?.applicant?.user?.fullNameEn || `App #${cert.application?.applicationId || 'N/A'}`;
+         const cnic = cert.application?.applicant?.user?.cnic || 'CNIC Hidden';
+         
+         return `
+         <div class="candidate-card" onclick="openMedPreview(${cert.certificateId})">
+           <div class="cc-top">
+             <div class="cc-avatar">${fmt.initials(appName)}</div>
+             <div>
+               <div class="cc-name">${appName}</div>
+               <div class="cc-meta">${cnic}</div>
+             </div>
+           </div>
+           <div class="cc-footer">
+             <span class="badge badge-amber">PENDING REVIEW</span>
+             <span class="badge badge-teal" style="margin-left:auto;">Review →</span>
+           </div>
+         </div>`;
+     }).join('');
+ } catch (e) {
+     console.error("Failed to load medical certs", e);
+     document.getElementById('medList').innerHTML = '<p style="text-align:center;padding:30px;color:var(--red);">Access Denied. Check Backend Security.</p>';
+ }
+}
+
+async function loadMedicalHistory() {
+ try {
+     const response = await API.get('/api/officer/medical/history');
+     let rawData = response?.data || response;
+     
+     historyCerts = Array.isArray(rawData) ? rawData : [];
+     
+     const approved = historyCerts.filter(c => c.status === 'APPROVED').length;
+     const rejected = historyCerts.filter(c => c.status === 'REJECTED').length;
+     document.getElementById('statMedTotal').textContent = historyCerts.length;
+     document.getElementById('statMedApp').textContent = approved;
+     document.getElementById('statMedRej').textContent = rejected;
+
+     const tbody = document.getElementById('medHistoryList');
+     if (historyCerts.length === 0) {
+         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">No history found.</td></tr>';
+         return;
+     }
+
+     historyCerts.sort((a,b) => new Date(b.approvalDate) - new Date(a.approvalDate));
+
+     tbody.innerHTML = historyCerts.map(cert => {
+         const appName = cert.application?.applicant?.user?.fullNameEn || 'Unknown';
+         const badgeClass = cert.status === 'APPROVED' ? 'badge-teal' : 'badge-red';
+         const dateStr = cert.approvalDate ? new Date(cert.approvalDate).toLocaleDateString() : 'N/A';
+         return `
+         <tr>
+             <td style="color:var(--teal);">#${cert.application?.applicationId || 'N/A'}</td>
+             <td>${appName}</td>
+             <td><span class="badge ${badgeClass}">${cert.status}</span></td>
+             <td>${dateStr}</td>
+             <td style="color:var(--muted); font-size:0.8rem;">${cert.rejectionReason || '—'}</td>
+         </tr>`;
+     }).join('');
+
+ } catch (e) {
+     console.error("Failed to load medical history", e);
+ }
+}
+
+/* ══════════════════════════════════════════
+PRACTICAL TESTS LOGIC (Strictly "Today" Filtering)
+══════════════════════════════════════════ */
+async function loadPracticalTests() {
+    try {
+        // Calculate exact string for "Today" (Format: YYYY-MM-DD)
+        const todayStr = new Date().toISOString().split('T')[0];
+
+        // ─── 1. FETCH AND DRAW PENDING CANDIDATES ───
+        const res = await API.get('/api/officer/practical-tests/pending');
+        let rawData = res?.data || res;
+        let allScheduledTests = Array.isArray(rawData) ? rawData : [];
+        
+        // 🚨 THE FIX: Filter to show ONLY candidates scheduled for TODAY
+        const scheduledTestsToday = allScheduledTests.filter(c => {
+            const sDate = c.scheduledDate ? c.scheduledDate.toString().split('T')[0] : '';
+            return sDate === todayStr;
+        });
+        
+        const list = document.getElementById('practicalCandidatesList');
+        
+        if (scheduledTestsToday.length === 0) {
+            list.innerHTML = `<p style="text-align:center;padding:30px;color:var(--muted);">No practical tests scheduled for today (${todayStr}).</p>`;
+        } else {
+            list.innerHTML = scheduledTestsToday.map(c => {
+                const appId = c.application?.applicationId || 'N/A';
+                const name = c.application?.applicant?.user?.fullNameEn || 'Unknown Candidate';
+                const cnic = c.application?.applicant?.user?.cnic || 'N/A';
+                const cat = c.application?.licenseCategory || 'N/A';
+
+                return `
+                <div class="candidate-card" style="border-left: 3px solid var(--teal);">
+                    <div class="cc-top">
+                        <div class="cc-avatar">${fmt.initials(name)}</div>
+                        <div>
+                            <div class="cc-name">${name}</div>
+                            <div class="cc-meta">App ID: #${appId} | ${cat} | Date: TODAY</div>
+                        </div>
+                    </div>
+                    <div class="cc-footer">
+                        <span class="badge badge-gold">AWAITING TEST</span>
+                        <span class="badge badge-teal" style="margin-left:auto; cursor:pointer;" onclick="setupEvaluation(${appId}, '${name}', '${cnic}', '${cat}')">Start Test →</span>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        // ─── 2. FETCH HISTORY & POPULATE AUDIT TAB ───
+        const historyRes = await API.get('/api/officer/practical-tests/history');
+        const history = historyRes?.data || historyRes || [];
+        
+        const tbody = document.getElementById('practicalHistoryList');
+        
+        if (history.length === 0) {
+            if(tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">No audit history found.</td></tr>';
+        } else {
+            // Display ALL historical tests in the detailed table
+            if(tbody) {
+                tbody.innerHTML = history.map(h => {
+                    const appName = h.application?.applicant?.user?.fullNameEn || 'Unknown';
+                    const appId = h.application?.applicationId || 'N/A';
+                    const cat = h.application?.licenseCategory || 'N/A';
+                    
+                    const isPassed = h.status === 'PASSED';
+                    const badgeClass = isPassed ? 'badge-teal' : (h.status === 'FAILED' ? 'badge-red' : 'badge-gold');
+                    
+                    // Show evaluation date if it exists, otherwise fall back to scheduled date
+                    const displayDate = h.evaluationDate ? fmt.date(h.evaluationDate) : (h.scheduledDate ? fmt.date(h.scheduledDate) : 'N/A');
+
+                    return `
+                    <tr>
+                        <td style="color:var(--teal); font-family:var(--mono);">#${appId}</td>
+                        <td style="font-weight:600;">${appName}</td>
+                        <td>${cat}</td>
+                        <td>${displayDate}</td>
+                        <td><span class="badge ${badgeClass}">${h.status || 'COMPLETED'}</span></td>
+                    </tr>`;
+                }).join('');
+            }
+        }
+        
+        // ─── 3. CALCULATE TOP STAT BOXES (TODAY ONLY) ───
+        // Filter the history to find tests that were actually evaluated TODAY
+        const todaysConducted = history.filter(h => {
+            const evalDate = h.evaluationDate ? h.evaluationDate.toString().split('T')[0] : '';
+            const schedDate = h.scheduledDate ? h.scheduledDate.toString().split('T')[0] : '';
+            return evalDate === todayStr || schedDate === todayStr;
+        });
+
+        const passedToday = todaysConducted.filter(h => h.status === 'PASSED' || h.status === 'COMPLETED').length;
+        const failedToday = todaysConducted.filter(h => h.status === 'FAILED').length;
+        const totalConductedToday = passedToday + failedToday;
+        
+        const passRate = totalConductedToday > 0 ? Math.round((passedToday / totalConductedToday) * 100) : 0;
+        
+        // "Tests Today" = Tests already finished today + Tests still waiting to happen today
+        const totalTestsToday = totalConductedToday + scheduledTestsToday.length;
+        
+        if(document.getElementById('statPassed')) document.getElementById('statPassed').textContent = passedToday;
+        if(document.getElementById('statFailed')) document.getElementById('statFailed').textContent = failedToday;
+        if(document.getElementById('statPassRate')) document.getElementById('statPassRate').textContent = passRate + '%';
+        if(document.getElementById('statToday')) document.getElementById('statToday').textContent = totalTestsToday; 
+
+    } catch(e) {
+        console.error("Failed to load practical tests", e);
+    }
+}
+function setupEvaluation(appId, name, cnic, category) {
+    const panel = document.getElementById('drivingEvalPanel') || document.getElementById('evaluationPanel');
+    if (!panel) return;
+
+    panel.innerHTML = `
+        <div class="card-header">
+            <h3>Candidate Evaluation</h3>
+            <span class="badge badge-amber">Awaiting Test</span>
+        </div>
+        <div style="padding: 20px; background: rgba(0,0,0,0.2); border-radius: 8px; margin-bottom: 20px;">
+            <div style="font-size:1.2rem; font-weight:bold; color:var(--white); margin-bottom:5px;">${name}</div>
+            <div style="color:var(--muted); font-size:0.85rem;">CNIC: ${cnic} | App ID: #${appId} | Cat: ${category}</div>
+        </div>
+        
+        <div id="simContainer" style="text-align:center; padding: 20px 0;">
+            <button class="btn btn-primary btn-lg" style="width:100%;" onclick="runDrivingSimulation(${appId})">
+                🚀 Start Live Driving Simulator
+            </button>
+        </div>
+    `;
+}
+
+async function runDrivingSimulation(appId) {
+    const container = document.getElementById('simContainer');
+    const parkScore = Math.floor(Math.random() * (98 - 82 + 1)) + 82;
+    const laneScore = Math.floor(Math.random() * (95 - 85 + 1)) + 85;
+    const signScore = Math.floor(Math.random() * (100 - 90 + 1)) + 90;
+    const totalScore = Math.round((parkScore + laneScore + signScore) / 3);
+
+    container.innerHTML = `
+        <div style="text-align:left;">
+            <h4 style="color:var(--white); margin-bottom: 15px;">📡 Connecting to vehicle telematics...</h4>
+            
+            <div style="margin-bottom: 15px;">
+                <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:var(--muted); margin-bottom:5px;">
+                    <span id="parkText">Evaluating Parallel Parking...</span> <span id="parkVal">0%</span>
+                </div>
+                <div class="progress-bar"><div id="parkBar" class="progress-fill teal" style="width:0%; transition: width 1.5s ease;"></div></div>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:var(--muted); margin-bottom:5px;">
+                    <span id="laneText">Waiting...</span> <span id="laneVal">0%</span>
+                </div>
+                <div class="progress-bar"><div id="laneBar" class="progress-fill gold" style="width:0%; transition: width 1.5s ease;"></div></div>
+            </div>
+
+            <div style="margin-bottom: 25px;">
+                <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:var(--muted); margin-bottom:5px;">
+                    <span id="signText">Waiting...</span> <span id="signVal">0%</span>
+                </div>
+                <div class="progress-bar"><div id="signBar" class="progress-fill teal" style="width:0%; transition: width 1.5s ease;"></div></div>
+            </div>
+        </div>
+    `;
+
+    await new Promise(r => setTimeout(r, 800));
+    document.getElementById('parkBar').style.width = parkScore + '%';
+    document.getElementById('parkVal').textContent = parkScore + '/100';
+    
+    await new Promise(r => setTimeout(r, 1600));
+    document.getElementById('laneText').textContent = 'Evaluating Lane Discipline...';
+    document.getElementById('laneBar').style.width = laneScore + '%';
+    document.getElementById('laneVal').textContent = laneScore + '/100';
+
+    await new Promise(r => setTimeout(r, 1600));
+    document.getElementById('signText').textContent = 'Evaluating Road Sign Recognition...';
+    document.getElementById('signBar').style.width = signScore + '%';
+    document.getElementById('signVal').textContent = signScore + '/100';
+
+    await new Promise(r => setTimeout(r, 1800));
+
+    container.innerHTML = `
+        <div style="background: rgba(0, 212, 170, 0.08); border: 2px solid var(--teal); border-radius: 12px; padding: 25px; animation: fadeIn 0.5s ease;">
+            <div style="font-size: 3rem; margin-bottom: 10px;">✅</div>
+            <h2 style="color: var(--teal); margin-bottom: 5px;">TEST PASSED</h2>
+            <div style="font-size: 1.5rem; font-family: var(--mono); color: var(--white); margin-bottom: 20px;">Score: ${totalScore}%</div>
+            
+            <button class="btn btn-primary" style="width:100%;" onclick="submitFinalResult(${appId}, ${parkScore}, ${laneScore}, ${signScore}, ${totalScore})">
+                Save Result & Advance Applicant
+            </button>
+        </div>
+    `;
+}
+
+async function submitFinalResult(appId, parkScore, laneScore, signScore, totalScore) {
+    try {
+        const res = await API.post('/api/officer/practical-tests/evaluate', {
+            applicationId: appId,
+            parkingScore: parkScore,
+            laneScore: laneScore,
+            signScore: signScore,
+            totalScore: totalScore
+        });
+
+        if (res?.success || res?.data) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Result Saved',
+                text: 'The candidate has passed and moved to the Final Payment phase!',
+                confirmButtonColor: 'var(--teal)'
+            });
+            
+            const panel = document.getElementById('drivingEvalPanel') || document.getElementById('evaluationPanel');
+            if (panel) {
+                panel.innerHTML = `
+                    <div style="text-align:center;padding:40px 20px;color:var(--muted);">
+                      <div style="font-size:2.5rem;margin-bottom:12px;">🚗</div>
+                      <p>Select a candidate to open the driving evaluation form.</p>
+                    </div>`;
+            }
+            loadPracticalTests();
+        }
+    } catch(e) {
+        Toast.error("Failed to save result.");
+        console.error(e);
+    }
+}
+
+function openMedPreview(certId) {
+    const cert = pendingCerts.find(c => c.certificateId === certId);
+    if (!cert) return;
+
+    const appName = cert.application?.applicant?.user?.fullNameEn || `Applicant #${cert.application?.applicationId || 'N/A'}`;
+
+    document.getElementById('medPreview').innerHTML = `
+      <div class="card-header" style="border-bottom: 1px solid var(--border); padding-bottom: 15px; margin-bottom: 20px;">
+        <h3 style="margin: 0; font-size: 1.15rem; color: var(--white);">Medical Certificate Review</h3>
+        <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: var(--teal); font-weight: 500;">${appName}</p>
+      </div>
+
+      <div style="background: rgba(0, 0, 0, 0.15); border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-bottom: 20px; text-align: center;">
+        
+        <div style="width: 100%; height: 280px; display: flex; align-items: center; justify-content: center; background: #151a25; border-radius: 8px; overflow: hidden; margin-bottom: 15px; border: 1px solid var(--border-2);">
+          <img src="${cert.filePath}" alt="Medical Certificate" 
+               style="max-width: 100%; max-height: 100%; object-fit: contain;"
+               onerror="this.onerror=null; this.parentElement.innerHTML='<div style=\\'color:var(--muted); font-size:0.9rem; display:flex; flex-direction:column; align-items:center; gap:8px;\\'><span style=\\'font-size:2rem;\\'>⚠️</span>Image not found on server</div>';">
+        </div>
+        
+        <a href="${cert.filePath}" target="_blank" 
+           style="display: inline-flex; align-items: center; gap: 8px; background: rgba(0, 212, 170, 0.1); color: var(--teal); padding: 10px 24px; border-radius: 8px; text-decoration: none; font-size: 0.85rem; font-weight: 600; border: 1px solid rgba(0, 212, 170, 0.25); transition: all 0.2s;">
+          <span>🔍 Open Full Image</span>
+          <span style="font-size: 1.1rem; line-height: 1;">↗</span>
+        </a>
+
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:8px; margin-bottom: 24px; background: rgba(255,255,255,0.02); padding: 16px; border-radius: 8px; border: 1px solid var(--border-2);">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px;">Application ID</span>
+            <span style="font-size: 1rem; font-weight: 600; color: var(--white); font-family: var(--mono);">#${cert.application?.applicationId || 'N/A'}</span>
+        </div>
+      </div>
+      
+      <div style="display:flex; gap:12px;">
+        <button class="btn btn-success" style="flex:1; display:flex; align-items:center; justify-content:center; gap:8px;" onclick="reviewMedical(${cert.certificateId}, true)">
+            <span style="font-size: 1.2rem; margin-top:-2px;">✓</span> Approve
+        </button>
+        <button class="btn btn-danger" style="flex:1; display:flex; align-items:center; justify-content:center; gap:8px;" onclick="reviewMedical(${cert.certificateId}, false)">
+            <span style="font-size: 1.2rem; margin-top:-2px;">✕</span> Reject
+        </button>
+      </div>`;
+}
+
+async function reviewMedical(certificateId, isApproved) {
+    let comments = '';
+
+    if (!isApproved) {
+        const { value: text } = await Swal.fire({
+            title: 'Reject Certificate',
+            input: 'textarea',
+            inputLabel: 'Reason for rejection',
+            showCancelButton: true
+        });
+        if (!text) return; 
+        comments = text;
+    } else {
+        const confirm = await Swal.fire({
+            title: 'Approve Medical Certificate?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, Approve'
+        });
+        if (!confirm.isConfirmed) return;
+    }
+
+    try {
+        Loader.show('Saving review...');
+        // Officer identity is resolved server-side from the session Principal —
+        // no officerId is sent in the request.
+        await API.post(`/api/officer/medical/review?certificateId=${certificateId}&isApproved=${isApproved}&comments=${encodeURIComponent(comments)}`);
+
+        Swal.fire('Success', `Certificate has been ${isApproved ? 'approved' : 'rejected'}.`, 'success');
+        
+        loadPendingMedical(); 
+        loadMedicalHistory();
+    } catch (e) {
+        Swal.fire('Error', 'Failed to submit review.', 'error');
+    } finally {
+        Loader.hide();
+    }
+}
+
+/* ══════════════════════════════════════════
+   UI NAVIGATION
+   ══════════════════════════════════════════ */
+function showSection(name, navEl) {
+  document.querySelectorAll('[id^="sec-"]').forEach(s => s.style.display = 'none');
+  document.getElementById('sec-' + name).style.display = 'block';
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  navEl?.classList.add('active');
+  const titles = { dashboard:"Dashboard", practical:'Practical Tests', medical:'Medical Review' };
+  document.getElementById('topbarTitle').innerHTML = `${titles[name]} <span>Overview</span>`;
+}
+
+function logout() { API.post('/api/auth/logout').finally(() => { window.location.href = '/login'; }); }
+</script>
+</body>
+</html>

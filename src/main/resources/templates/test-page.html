@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>DLMS — Theory Test</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+<style>
+body{background:var(--navy);}
+
+/* ── TEST SHELL ── */
+.test-shell{display:grid;grid-template-columns:280px 1fr;min-height:100vh;}
+
+/* ── LEFT PANEL ── */
+.test-sidebar{
+  background:var(--navy-2);border-right:1px solid var(--border);
+  padding:22px;display:flex;flex-direction:column;gap:16px;
+  position:sticky;top:0;height:100vh;overflow-y:auto;
+}
+.test-logo{display:flex;align-items:center;gap:10px;margin-bottom:4px;}
+.test-logo .t-icon{width:34px;height:34px;background:linear-gradient(135deg,var(--teal),var(--teal-dim));border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1rem;}
+.test-logo .t-name{font-size:.88rem;font-weight:700;color:var(--white);}
+.test-logo .t-sub{font-size:.68rem;color:var(--muted);}
+
+/* Timer */
+.timer-box{
+  background:rgba(255,255,255,.03);border:1px solid var(--border);
+  border-radius:var(--r);padding:16px;text-align:center;
+}
+.timer-box .timer-label{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
+.timer-display{
+  font-size:2rem;font-weight:700;font-family:var(--mono);color:var(--white);
+  transition:color .3s;
+}
+.timer-display.warning{color:var(--amber);animation:timerPulse 1s infinite;}
+.timer-display.danger {color:var(--red);animation:timerPulse .5s infinite;}
+@keyframes timerPulse{0%,100%{opacity:1}50%{opacity:.5}}
+.timer-bar{height:4px;background:var(--navy-3);border-radius:2px;margin-top:8px;overflow:hidden;}
+.timer-fill{height:100%;background:var(--teal);border-radius:2px;transition:width 1s linear,background .3s;}
+
+/* Question grid */
+.q-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;}
+.q-dot{
+  aspect-ratio:1;border-radius:6px;border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  font-size:.7rem;font-weight:600;cursor:pointer;transition:all .15s;
+  background:rgba(255,255,255,.03);color:var(--muted);
+}
+.q-dot:hover{border-color:var(--teal);color:var(--teal);}
+.q-dot.answered{background:rgba(0,212,170,.12);border-color:var(--teal);color:var(--teal);}
+.q-dot.current{background:var(--teal);color:var(--navy);border-color:var(--teal);}
+.q-dot.flagged{background:rgba(245,200,66,.12);border-color:var(--gold);color:var(--gold);}
+
+.test-meta{font-size:.75rem;color:var(--muted);text-align:center;}
+.test-meta strong{color:var(--white);}
+
+/* ── RIGHT: QUESTION ── */
+.test-main{display:flex;flex-direction:column;padding:36px 48px;}
+
+.question-header{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:28px;
+}
+.q-counter{font-size:.8rem;color:var(--muted);}
+.q-counter strong{color:var(--white);}
+.q-flag-btn{
+  display:flex;align-items:center;gap:6px;
+  background:none;border:1px solid var(--border);border-radius:8px;
+  padding:5px 12px;font-size:.75rem;color:var(--muted);cursor:pointer;
+  transition:all .2s;font-family:var(--font);
+}
+.q-flag-btn:hover,.q-flag-btn.flagged{border-color:var(--gold);color:var(--gold);background:rgba(245,200,66,.08);}
+
+.question-card{
+  background:var(--card-bg);border:1px solid var(--border);
+  border-radius:var(--radius-xl);padding:36px;margin-bottom:24px;
+  animation:fadeIn .3s ease;
+  flex:1;
+}
+.q-category{font-size:.68rem;color:var(--teal);font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px;}
+.q-image{width:100%;max-height:200px;object-fit:cover;border-radius:var(--r);margin-bottom:20px;border:1px solid var(--border);}
+.q-text{font-size:1.05rem;font-weight:500;color:var(--white);line-height:1.6;margin-bottom:28px;}
+
+/* Options */
+.options-grid{display:flex;flex-direction:column;gap:10px;}
+.option{
+  display:flex;align-items:center;gap:14px;
+  padding:14px 18px;
+  background:rgba(255,255,255,.03);
+  border:1.5px solid var(--border);border-radius:var(--r);
+  cursor:pointer;transition:all .2s;
+}
+.option:hover{border-color:rgba(0,212,170,.3);background:rgba(0,212,170,.04);transform:translateX(4px);}
+.option.selected{border-color:var(--teal);background:rgba(0,212,170,.1);}
+.option.correct{border-color:var(--green);background:rgba(34,197,94,.12);}
+.option.wrong{border-color:var(--red);background:rgba(255,77,109,.1);}
+.option-key{
+  width:28px;height:28px;border-radius:7px;
+  background:var(--navy-3);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  font-size:.75rem;font-weight:700;flex-shrink:0;transition:all .2s;
+}
+.option.selected .option-key{background:var(--teal);color:var(--navy);border-color:var(--teal);}
+.option.correct .option-key{background:var(--green);color:var(--navy);}
+.option.wrong .option-key{background:var(--red);color:white;}
+.option-text{font-size:.9rem;color:var(--off-white);flex:1;line-height:1.4;}
+
+/* Navigation */
+.test-nav{display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:20px;}
+.test-nav-info{font-size:.8rem;color:var(--muted);}
+
+/* ── SCREENS ── */
+#introScreen, #resultScreen{
+  position:fixed;inset:0;background:var(--navy);
+  display:flex;align-items:center;justify-content:center;
+  z-index:200;flex-direction:column;text-align:center;padding:40px;
+}
+.intro-box{
+  max-width:560px;
+  background:var(--card-bg);border:1px solid var(--border);
+  border-radius:var(--radius-xl);padding:44px;
+}
+.intro-icon{font-size:3rem;margin-bottom:16px;}
+.intro-rules{
+  background:rgba(255,255,255,.03);border:1px solid var(--border);
+  border-radius:var(--r);padding:16px;text-align:left;margin:20px 0;
+}
+.intro-rule{display:flex;gap:10px;padding:7px 0;font-size:.83rem;color:var(--muted);border-bottom:1px solid var(--border);}
+.intro-rule:last-child{border:none;}
+.intro-rule .rule-icon{flex-shrink:0;width:20px;text-align:center;}
+.intro-rule strong{color:var(--white);}
+
+/* Result screen */
+.result-circle{
+  width:120px;height:120px;border-radius:50%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-size:2.2rem;font-weight:700;font-family:var(--mono);
+  border:3px solid;margin:0 auto 24px;
+}
+.result-circle.pass{border-color:var(--green);color:var(--green);background:rgba(34,197,94,.1);}
+.result-circle.fail{border-color:var(--red);color:var(--red);background:rgba(255,77,109,.1);}
+.result-breakdown{
+  display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;
+  margin:24px 0;max-width:420px;
+}
+.rb-item{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:var(--r);padding:14px;text-align:center;}
+.rb-val{font-size:1.4rem;font-weight:700;font-family:var(--mono);}
+.rb-lbl{font-size:.68rem;color:var(--muted);margin-top:3px;}
+
+@media(max-width:800px){
+  .test-shell{grid-template-columns:1fr;}
+  .test-sidebar{height:auto;position:static;}
+  .test-main{padding:20px;}
+}
+</style>
+</head>
+<body>
+
+<!-- ── INTRO SCREEN ── -->
+<div id="introScreen">
+  <div class="intro-box">
+    <div class="intro-icon">📝</div>
+    <h2 style="color:var(--white);margin-bottom:8px;" id="testTitle">Theory Test</h2>
+    <p id="testSubtitle">Punjab DLMS — Computer-Based MCQ Test</p>
+
+    <div class="intro-rules">
+      <div class="intro-rule"><span class="rule-icon">⏱️</span><span>Time limit: <strong id="ruleTime">25 minutes</strong> for <strong id="ruleQCount">25 questions</strong></span></div>
+      <div class="intro-rule"><span class="rule-icon">✅</span><span>Passing score: <strong>70% or above</strong> (18 correct out of 25)</span></div>
+      <div class="intro-rule"><span class="rule-icon">⚠️</span><span>Each question has <strong>one correct answer</strong> only</span></div>
+      <div class="intro-rule"><span class="rule-icon">🚩</span><span>You can <strong>flag questions</strong> to revisit before submitting</span></div>
+      <div class="intro-rule"><span class="rule-icon">🔒</span><span>Once submitted, <strong>answers cannot be changed</strong></span></div>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+      <button class="btn btn-primary btn-lg" onclick="startTest(false)">Start Official Test →</button>
+      <button class="btn btn-ghost btn-lg"   onclick="startTest(true)">Practice Mode</button>
+    </div>
+    <button class="btn btn-ghost btn-sm" style="margin-top:12px;" onclick="window.history.back()">← Back to Dashboard</button>
+  </div>
+</div>
+
+<!-- ── RESULT SCREEN ── -->
+<div id="resultScreen" style="display:none;">
+  <div class="intro-box" style="max-width:520px;">
+    <div class="result-circle" id="resultCircle"></div>
+    <h2 id="resultTitle" style="color:var(--white);margin-bottom:6px;"></h2>
+    <p id="resultSubtitle"></p>
+    <div class="result-breakdown">
+      <div class="rb-item"><div class="rb-val" id="rCorrect" style="color:var(--green);">—</div><div class="rb-lbl">Correct</div></div>
+      <div class="rb-item"><div class="rb-val" id="rWrong" style="color:var(--red);">—</div><div class="rb-lbl">Wrong</div></div>
+      <div class="rb-item"><div class="rb-val" id="rSkipped" style="color:var(--muted);">—</div><div class="rb-lbl">Skipped</div></div>
+    </div>
+    <div style="margin-bottom:20px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:.8rem;"><span style="color:var(--muted);">Score</span><span id="rPct" style="color:var(--teal);font-weight:700;"></span></div>
+      <div class="progress-bar"><div class="progress-fill" id="resultBar" style="width:0%;"></div></div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="reviewAnswers()">Review Answers</button>
+      <button class="btn btn-ghost"   onclick="window.location.reload()">Retake Test</button>
+      <button class="btn btn-ghost"   onclick="window.location.href='/applicant-dashboard'">Dashboard</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── TEST INTERFACE ── -->
+<div class="test-shell" id="testShell" style="display:none;">
+
+  <!-- Left Sidebar -->
+  <div class="test-sidebar">
+    <div class="test-logo">
+      <div class="t-icon">📝</div>
+      <div><div class="t-name">Theory Test</div><div class="t-sub" id="modeLabel">Official</div></div>
+    </div>
+
+    <div class="timer-box">
+      <div class="timer-label">Time Remaining</div>
+      <div class="timer-display" id="timerDisplay">25:00</div>
+      <div class="timer-bar"><div class="timer-fill" id="timerFill" style="width:100%;"></div></div>
+    </div>
+
+    <div>
+      <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Questions</div>
+      <div class="q-grid" id="questionGrid"></div>
+    </div>
+
+    <div class="test-meta">
+      <div><strong id="answeredCount">0</strong> of <strong id="totalCount">0</strong> answered</div>
+      <div style="margin-top:4px;"><span style="color:var(--gold);">🚩 Flagged: <strong id="flaggedCount">0</strong></span></div>
+    </div>
+
+    <button class="btn btn-danger btn-sm" onclick="confirmSubmit()" style="margin-top:auto;">Submit Test</button>
+  </div>
+
+  <!-- Main Question Area -->
+  <div class="test-main">
+    <div class="question-header">
+      <div class="q-counter">Question <strong id="qNum">1</strong> of <strong id="qTotal">25</strong></div>
+      <button class="q-flag-btn" id="flagBtn" onclick="toggleFlag()">🚩 Flag for Review</button>
+    </div>
+
+    <div class="question-card" id="questionCard">
+      <div class="q-category" id="qCategory"></div>
+      <div class="q-text" id="qText"></div>
+      <div class="options-grid" id="optionsGrid"></div>
+      <div id="explanationBox" style="display:none;margin-top:20px;padding:14px;background:rgba(0,212,170,.06);border:1px solid rgba(0,212,170,.2);border-radius:var(--r);">
+        <div style="font-size:.75rem;font-weight:700;color:var(--teal);margin-bottom:5px;">EXPLANATION (Practice Mode)</div>
+        <div style="font-size:.85rem;color:var(--off-white);" id="explanationText"></div>
+      </div>
+    </div>
+
+    <div class="test-nav">
+      <button class="btn btn-ghost" id="prevBtn" onclick="navigate(-1)">← Previous</button>
+      <div class="test-nav-info" id="navInfo"></div>
+      <button class="btn btn-primary" id="nextBtn" onclick="navigate(1)">Next →</button>
+    </div>
+  </div>
+</div>
+
+<script th:src="@{/js/script.js}"></script>
+<script>
+/* ═══════════════════════════════════════════════
+   THEORY TEST ENGINE
+   Questions loaded from API. Falls back to
+   built-in question bank if API unavailable.
+   ═══════════════════════════════════════════════ */
+
+let questions     = [];
+let answers       = {};    // { qIndex: optionIndex }
+let flagged       = new Set();
+let currentQ      = 0;
+let timerInterval = null;
+let timeLeft      = 0;
+let totalTime     = 0;
+let isPractice    = false;
+let testId        = null;
+let isReviewMode  = false;
+
+const FALLBACK_QUESTIONS = [
+  { id:1, category:'Traffic Signs', text:'A red octagonal sign means:', options:['Stop completely','Slow down','Yield to oncoming traffic','No entry'], correct:0, explanation:'A red octagon always means STOP. You must bring your vehicle to a complete stop before the stop line.' },
+  { id:2, category:'Speed Limits', text:'What is the default speed limit in a residential area in Pakistan unless otherwise posted?', options:['60 km/h','80 km/h','40 km/h','50 km/h'], correct:2, explanation:'The standard speed limit in residential areas is 40 km/h unless signs indicate otherwise.' },
+  { id:3, category:'Traffic Rules', text:'When approaching a pedestrian crossing where someone is waiting to cross, you should:', options:['Honk and continue','Speed up to pass quickly','Slow down and stop to let them cross','Flash your lights'], correct:2, explanation:'Pedestrians have the right of way at pedestrian crossings. You must stop and allow them to cross safely.' },
+  { id:4, category:'Vehicle Safety', text:'Your vehicle\'s brake warning light comes on while driving. You should:', options:['Continue driving normally','Increase speed','Safely pull over and stop immediately','Ignore it — it often comes on by itself'], correct:2, explanation:'A brake warning light indicates a critical safety issue. Stop safely as soon as possible and have the vehicle inspected.' },
+  { id:5, category:'Traffic Rules', text:'At a four-way stop, who goes first?', options:['Largest vehicle','Vehicle arriving first','Vehicle on the left','Vehicle on the right'], correct:1, explanation:'The vehicle that arrives first at the intersection has the right of way. If two vehicles arrive simultaneously, the one on the right goes first.' },
+  { id:6, category:'Traffic Signs', text:'A yellow diamond-shaped sign indicates:', options:['Mandatory instruction','Warning or hazard ahead','Information only','Speed limit'], correct:1, explanation:'Yellow diamond signs are warning signs that alert drivers to potential hazards or changes in road conditions ahead.' },
+  { id:7, category:'Safe Driving', text:'You should check your rear-view mirror every:', options:['10 minutes','30 seconds','5-8 seconds','At traffic lights only'], correct:2, explanation:'Experienced drivers scan their mirrors every 5-8 seconds to maintain awareness of traffic around them.' },
+  { id:8, category:'Vehicle Safety', text:'Minimum tread depth for tyres in Pakistan is:', options:['1 mm','1.6 mm','3 mm','2 mm'], correct:1, explanation:'The minimum legal tread depth is 1.6mm. Below this, the tyre cannot effectively channel water and grip the road.' },
+  { id:9, category:'Traffic Rules', text:'You must use headlights when visibility is less than:', options:['100 metres','50 metres','200 metres','500 metres'], correct:0, explanation:'Headlights are required by law when visibility drops below 100 metres due to weather conditions or darkness.' },
+  { id:10, category:'Traffic Signs', text:'A blue circular sign with a white arrow pointing right means:', options:['No right turn','Turn right allowed only','Recommended direction','One-way street'], correct:1, explanation:'Blue circular signs with arrows give mandatory instructions — in this case, traffic must turn right.' },
+  { id:11, category:'Safe Driving', text:'The safest following distance behind the vehicle in front is:', options:['1 second','2 seconds','3 seconds','5 metres'], correct:2, explanation:'The 3-second rule provides enough time to react and brake safely in most driving conditions.' },
+  { id:12, category:'Traffic Rules', text:'When is it legal to use the horn in a residential area at night?', options:['When you need to warn someone','Never between 11 PM and 7 AM','Only in emergencies','Always allowed'], correct:1, explanation:'Unnecessary horn use is prohibited in residential areas between 11 PM and 7 AM to reduce noise pollution.' },
+  { id:13, category:'Vehicle Safety', text:'Power steering failure while driving — what should you do?', options:['Stop immediately — it is impossible to steer','Keep both hands firmly on the wheel and gradually reduce speed','Increase speed','Turn sharply to regain control'], correct:1, explanation:'Steering is still possible without power assistance but requires significantly more effort. Hold the wheel firmly and slow down gradually.' },
+  { id:14, category:'Traffic Rules', text:'You may overtake on the left only when:', options:['The driver ahead signals to turn right','You are in a hurry','The road is wide enough','There is no oncoming traffic'], correct:0, explanation:'Overtaking on the left (inside) is only permitted when the driver ahead has signalled and is turning right.' },
+  { id:15, category:'Traffic Signs', text:'What does a triangular sign with a red border indicate?', options:['Mandatory instruction','Warning — hazard ahead','Information','Speed limit'], correct:1, explanation:'Triangular signs with a red border are warning signs alerting drivers to potential hazards or changing road conditions.' },
+  { id:16, category:'Safe Driving', text:'Before reversing, you should:', options:['Sound the horn once','Check all mirrors and physically look behind','Assume the area is clear','Open the window'], correct:1, explanation:'Always check all mirrors AND physically turn to look behind before reversing. Mirrors have blind spots.' },
+  { id:17, category:'Traffic Rules', text:'A solid white line in the centre of the road means:', options:['Overtaking permitted with care','No overtaking under any circumstances','Overtaking at low speed only','Lane guidance only'], correct:1, explanation:'A solid white centre line means no overtaking is permitted from either direction. It marks a dangerous stretch of road.' },
+  { id:18, category:'Vehicle Safety', text:'You notice your vehicle pulling to one side when braking. This most likely indicates:', options:['Under-inflated front tyre','Normal ABS function','Uneven brake wear or a stuck caliper','The road is cambered'], correct:2, explanation:'Uneven braking suggests worn brakes on one side or a seized/sticking brake caliper, which must be repaired immediately.' },
+  { id:19, category:'Traffic Rules', text:'The minimum age to hold a driving licence for a motorcycle in Pakistan is:', options:['16 years','18 years','17 years','21 years'], correct:1, explanation:'The minimum age to obtain any driving licence in Pakistan is 18 years of age.' },
+  { id:20, category:'Safe Driving', text:'Rain makes roads most slippery:', options:['After heavy rain','During heavy rain','In the first few minutes of light rain','Only during thunderstorms'], correct:2, explanation:'The first few minutes of light rain lift oil and dust from the road surface, creating a dangerously slippery mixture before being washed away.' },
+  { id:21, category:'Traffic Signs', text:'A sign showing a car with two curved arrows (skid) means:', options:['Ice on road','Slippery road surface ahead','Winding road','Road narrows'], correct:1, explanation:'The skidding car symbol warns of a slippery road surface ahead, usually due to a different surface type or bends.' },
+  { id:22, category:'Traffic Rules', text:'If you are involved in a minor accident with no injuries, you must:', options:['Drive away quickly','Move vehicles if blocking traffic, exchange details, report to police','Only call your insurance','Wait for police before moving vehicles'], correct:1, explanation:'Move vehicles off the road if they are creating a hazard, exchange details with the other party, and report to police if required.' },
+  { id:23, category:'Vehicle Safety', text:'When driving in fog, you should use:', options:['High beam headlights','No headlights','Low beam headlights and fog lights if fitted','Hazard lights only'], correct:2, explanation:'High beams reflect off fog and reduce visibility. Use dipped (low) beams and rear fog lights to be seen without dazzling others.' },
+  { id:24, category:'Safe Driving', text:'When feeling drowsy while driving, the best action is:', options:['Open the window','Drink coffee','Stop safely and rest for at least 20 minutes','Turn on loud music'], correct:2, explanation:'The only safe solution to drowsy driving is to stop and rest. Other measures only temporarily mask fatigue.' },
+  { id:25, category:'Traffic Rules', text:'You must give way to emergency vehicles (police, ambulance, fire brigade) by:', options:['Stopping completely wherever you are','Moving to the left and stopping if safe to do so','Speeding up to clear the road','Using hazard lights and continuing'], correct:1, explanation:'Pull to the left as far as safely possible and stop to allow emergency vehicles to pass unobstructed.' },
+];
+
+async function fetchQuestions(testType) {
+  try {
+    const res = await API.get(`/api/tests/questions?category=${testType}&limit=25`);
+    if (res?.data?.length >= 10) return res.data;
+  } catch {}
+  return FALLBACK_QUESTIONS;
+}
+
+async function startTest(practice) {
+  isPractice = practice;
+  document.getElementById('modeLabel').textContent = practice ? 'Practice Mode' : 'Official Test';
+  Loader.show('Loading questions...');
+
+  questions = await fetchQuestions('GENERAL');
+
+  /* Shuffle for variety */
+  questions = [...questions].sort(() => Math.random() - 0.5);
+
+  const TIME_LIMIT = 25 * 60; // 25 minutes
+  timeLeft  = TIME_LIMIT;
+  totalTime = TIME_LIMIT;
+
+  document.getElementById('ruleTime').textContent   = '25 minutes';
+  document.getElementById('ruleQCount').textContent = questions.length + ' questions';
+  document.getElementById('qTotal').textContent     = questions.length;
+  document.getElementById('totalCount').textContent = questions.length;
+
+  buildQuestionGrid();
+  renderQuestion(0);
+
+  document.getElementById('introScreen').style.display = 'none';
+  document.getElementById('testShell').style.display   = 'grid';
+  Loader.hide();
+
+  /* Start timer (skip in practice mode for relaxed learning) */
+  if (!practice) startTimer();
+  else {
+    document.getElementById('timerDisplay').textContent = '∞';
+    document.getElementById('timerFill').style.width   = '100%';
+  }
+}
+
+function startTimer() {
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    updateTimerDisplay();
+    if (timeLeft <= 0) { clearInterval(timerInterval); submitTest(); }
+  }, 1000);
+}
+
+function updateTimerDisplay() {
+  const m = Math.floor(timeLeft / 60);
+  const s = timeLeft % 60;
+  const disp = document.getElementById('timerDisplay');
+  const fill = document.getElementById('timerFill');
+  disp.textContent = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+  fill.style.width = (timeLeft / totalTime * 100) + '%';
+
+  if (timeLeft <= 60) {
+    disp.className = 'timer-display danger';
+    fill.style.background = 'var(--red)';
+  } else if (timeLeft <= 300) {
+    disp.className = 'timer-display warning';
+    fill.style.background = 'var(--amber)';
+  }
+}
+
+function buildQuestionGrid() {
+  document.getElementById('questionGrid').innerHTML = questions.map((_,i) => `
+    <div class="q-dot" id="dot_${i}" onclick="goTo(${i})">${i+1}</div>`).join('');
+  updateGrid();
+}
+
+function updateGrid() {
+  questions.forEach((_,i) => {
+    const dot = document.getElementById('dot_' + i);
+    dot.className = 'q-dot' +
+      (i === currentQ    ? ' current'  : '') +
+      (answers[i] !== undefined ? ' answered' : '') +
+      (flagged.has(i)    ? ' flagged'  : '');
+  });
+  const answered = Object.keys(answers).length;
+  document.getElementById('answeredCount').textContent = answered;
+  document.getElementById('flaggedCount').textContent  = flagged.size;
+}
+
+function renderQuestion(index) {
+  currentQ       = index;
+  const q        = questions[index];
+  const selected = answers[index];
+
+  document.getElementById('qNum').textContent      = index + 1;
+  document.getElementById('qCategory').textContent = q.category || '';
+  document.getElementById('qText').textContent     = q.text || q.questionEng || q.question || '';
+  document.getElementById('flagBtn').className     = 'q-flag-btn' + (flagged.has(index) ? ' flagged' : '');
+
+  const keys = ['A','B','C','D'];
+  const opts = q.options || [q.optionA, q.optionB, q.optionC, q.optionD].filter(Boolean);
+  const correctIdx = q.correct !== undefined ? q.correct : (q.correctOption ? ['A','B','C','D'].indexOf(q.correctOption) : 0);
+
+  document.getElementById('optionsGrid').innerHTML = opts.map((opt, i) => {
+    let cls = 'option';
+    if (isReviewMode) {
+      if (i === correctIdx) cls += ' correct';
+      else if (i === selected && i !== correctIdx) cls += ' wrong';
+    } else if (selected === i) cls += ' selected';
+    return `<div class="${cls}" onclick="selectOption(${i})" id="opt_${index}_${i}">
+      <div class="option-key">${keys[i]}</div>
+      <div class="option-text">${opt}</div>
+    </div>`;
+  }).join('');
+
+  /* Explanation (practice mode or review) */
+  const explBox = document.getElementById('explanationBox');
+  if ((isPractice && selected !== undefined) || isReviewMode) {
+    if (q.explanation) {
+      document.getElementById('explanationText').textContent = q.explanation;
+      explBox.style.display = 'block';
+    }
+  } else { explBox.style.display = 'none'; }
+
+  /* Nav buttons */
+  document.getElementById('prevBtn').style.opacity  = index === 0 ? '0.4' : '1';
+  document.getElementById('prevBtn').disabled       = index === 0;
+  document.getElementById('nextBtn').textContent    = index === questions.length-1 ? 'Submit Test' : 'Next →';
+  document.getElementById('navInfo').textContent    = `${Object.keys(answers).length}/${questions.length} answered`;
+
+  updateGrid();
+}
+
+function selectOption(optIdx) {
+  if (isReviewMode) return;
+  answers[currentQ] = optIdx;
+
+  if (isPractice) {
+    const q = questions[currentQ];
+    const correctIdx = q.correct !== undefined ? q.correct : 0;
+    const opts = document.querySelectorAll('.option');
+    opts.forEach((o, i) => {
+      o.classList.remove('selected','correct','wrong');
+      if (i === correctIdx) o.classList.add('correct');
+      else if (i === optIdx && optIdx !== correctIdx) o.classList.add('wrong');
+    });
+    if (q.explanation) {
+      document.getElementById('explanationText').textContent = q.explanation;
+      document.getElementById('explanationBox').style.display = 'block';
+    }
+  } else {
+    document.querySelectorAll('.option').forEach((o,i) => {
+      o.classList.toggle('selected', i === optIdx);
+    });
+  }
+  updateGrid();
+}
+
+function navigate(dir) {
+  const next = currentQ + dir;
+  if (next < 0) return;
+  if (next >= questions.length) { confirmSubmit(); return; }
+  renderQuestion(next);
+}
+
+function goTo(index) { renderQuestion(index); }
+
+function toggleFlag() {
+  if (flagged.has(currentQ)) flagged.delete(currentQ);
+  else flagged.add(currentQ);
+  document.getElementById('flagBtn').className = 'q-flag-btn' + (flagged.has(currentQ) ? ' flagged' : '');
+  updateGrid();
+}
+
+function confirmSubmit() {
+  const unanswered = questions.length - Object.keys(answers).length;
+  if (unanswered > 0 && !isPractice) {
+    if (!confirm(`You have ${unanswered} unanswered question(s). Submit anyway?`)) return;
+  }
+  clearInterval(timerInterval);
+  submitTest();
+}
+
+async function submitTest() {
+  clearInterval(timerInterval);
+
+  let correct = 0;
+  questions.forEach((q, i) => {
+    const correctIdx = q.correct !== undefined ? q.correct : 0;
+    if (answers[i] === correctIdx) correct++;
+  });
+
+  const total   = questions.length;
+  const wrong   = Object.keys(answers).length - correct;
+  const skipped = total - Object.keys(answers).length;
+  const pct     = Math.round(correct / total * 100);
+  const passed  = pct >= 70;
+
+  /* Save result to backend */
+  if (!isPractice) {
+    try {
+      await API.post('/api/tests/submit', { testId, answers, score:pct, result:passed?'PASSED':'FAILED' });
+    } catch {}
+  }
+
+  showResult({ correct, wrong, skipped, pct, passed, total });
+}
+
+function showResult({ correct, wrong, skipped, pct, passed, total }) {
+  document.getElementById('testShell').style.display  = 'none';
+  document.getElementById('resultScreen').style.display = 'flex';
+
+  const circle = document.getElementById('resultCircle');
+  circle.className = 'result-circle ' + (passed ? 'pass' : 'fail');
+  circle.innerHTML = `${pct}%<div style="font-size:.65rem;font-weight:600;">${passed?'PASS':'FAIL'}</div>`;
+
+  document.getElementById('resultTitle').textContent    = passed ? '🎉 Congratulations! You Passed!' : '📚 Test Not Passed';
+  document.getElementById('resultSubtitle').textContent = passed
+    ? `You scored ${pct}% — well above the 70% passing threshold.`
+    : `You scored ${pct}%. You need at least 70% (${Math.ceil(total*0.7)} correct) to pass. You can retake the test.`;
+
+  document.getElementById('rCorrect').textContent = correct;
+  document.getElementById('rWrong').textContent   = wrong;
+  document.getElementById('rSkipped').textContent = skipped;
+  document.getElementById('rPct').textContent     = pct + '%';
+
+  const bar = document.getElementById('resultBar');
+  bar.style.width     = pct + '%';
+  bar.className       = 'progress-fill ' + (passed ? 'teal' : 'red');
+
+  /* Animate score */
+  setTimeout(() => { bar.style.width = pct + '%'; }, 100);
+}
+
+function reviewAnswers() {
+  isReviewMode = true;
+  document.getElementById('resultScreen').style.display = 'none';
+  document.getElementById('testShell').style.display    = 'grid';
+  renderQuestion(0);
+  document.getElementById('nextBtn').textContent = 'Next →';
+}
+
+/* Keyboard shortcuts */
+document.addEventListener('keydown', e => {
+  if (document.getElementById('testShell').style.display === 'none') return;
+  if (e.key === 'ArrowRight' || e.key === 'Enter') navigate(1);
+  if (e.key === 'ArrowLeft')                        navigate(-1);
+  if (e.key === 'a' || e.key === '1')               selectOption(0);
+  if (e.key === 'b' || e.key === '2')               selectOption(1);
+  if (e.key === 'c' || e.key === '3')               selectOption(2);
+  if (e.key === 'd' || e.key === '4')               selectOption(3);
+  if (e.key === 'f')                                 toggleFlag();
+});
+</script>
+</body>
+</html>
